@@ -1,13 +1,25 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyD...",
+  apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
   authDomain: "realtime-database-aktivieren.firebaseapp.com",
   databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "realtime-database-aktivieren",
-  storageBucket: "realtime-database-aktivieren.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef..."
+  storageBucket: "realtime-database-aktivieren.firebasestorage.app",
+  messagingSenderId: "921607081725",
+  appId: "1:921607081725:web:7630f400a518ab9507f894",
+  measurementId: "G-TKN9TP77G3"
 };
 
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
