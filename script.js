@@ -1,370 +1,3 @@
-// Test
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-
-// --- NEU: Importiere die benötigten Funktionen aus dem modularen Firebase Authentication SDK
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
-
-// Importiere die benötigten Funktionen aus dem modularen Firebase Realtime Database SDK
-// Achte darauf, alle benötigten Funktionen zu importieren, die du im Code verwendest
-import { getDatabase, ref, set, onValue, push, remove, update, child, serverTimestamp, onDisconnect, get, onChildAdded } from "firebase/database";
-
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
-  authDomain: "realtime-database-aktivieren.firebaseapp.com",
-  databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "realtime-database-aktivieren",
-  storageBucket: "realtime-database-aktivieren.firebasestorage.app",
-  messagingSenderId: "921607081725",
-  appId: "1:921607081725:web:7630f400a518ab9507f894",
-  measurementId: "G-TKN9TP77G3"
-};
-
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
-
-// Initialize Analytics (optional, but good to keep if you use it)
-//const analytics = getAnalytics(app); // Deaktiviert, da analytics nicht im Code verwendet wird
-
-// --- NEU: Initialize Firebase Authentication
-const auth = getAuth(app);
-
-// Initialize Realtime Database using the modular approach
-const database = getDatabase(app); // Hol die Datenbank-Instanz von deiner initialisierten App
-
-// Game State
-const gameState = {
-    currentScreen: 'loading', // --- NEU: Start mit 'loading' bis der Nutzer angemeldet ist
-    playerName: '',
-    // playerId wird jetzt durch die Firebase Auth UID gesetzt
-    playerId: null, // Dies wird von Firebase Auth gesetzt
-    lobbyId: null,
-    lobbyRef: null, // Diese Variable wird nun eine modulare Datenbank-Referenz halten
-    isHost: false,
-    gamePhase: 'waiting', // waiting, placing, ready, playing, gameover
-    currentTurn: null,
-
-    // Ship Configuration
-    shipTypes: [
-        { name: 'Träger', size: 5, count: 1, icon: '🚢' },
-        { name: 'Schlachtschiff', size: 4, count: 1, icon: '⚓' },
-        { name: 'Kreuzer', size: 3, count: 1, icon: '🛥️' },
-        { name: 'U-Boot', size: 3, count: 1, icon: '🚤' },
-        { name: 'Zerstörer', size: 2, count: 1, icon: '⛵' }
-    ],
-
-    // Game Data
-    myBoard: Array(10).fill(null).map(() => Array(10).fill('water')),
-    enemyBoard: Array(10).fill(null).map(() => Array(10).fill('unknown')),
-    myShips: [],
-    enemyShips: [],
-
-    // Placement Data
-    selectedShip: null,
-    shipOrientation: 'horizontal',
-    placedShips: [],
-
-    // Stats
-    shots: 0,
-    hits: 0,
-    sunkShips: 0,
-
-    // Cheats
-    cheatsEnabled: false,
-    probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0))
-};
-
-// DOM Elements
-const screens = {
-    loading: document.getElementById('loadingScreen'), // --- NEU: Ein Ladescreen
-    lobby: document.getElementById('lobbyScreen'),
-    waiting: document.getElementById('waitingScreen'),
-    placement: document.getElementById('placementScreen'),
-    game: document.getElementById('gameScreen'),
-    gameover: document.getElementById('gameOverScreen')
-};
-
-// --- NEU: Funktion zum Anzeigen eines Ladezustands, während auf Auth gewartet wird
-function showLoading(isLoading) {
-    if (isLoading) {
-        document.getElementById('loadingScreen').style.display = 'flex';
-    } else {
-         document.getElementById('loadingScreen').style.display = 'none';
-    }
-}
-
-
-// Utility Functions
-function generateLobbyCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
-function showScreen(screenName) {
-    Object.keys(screens).forEach(name => {
-        // Überprüfe, ob das Element existiert, bevor du classList änderst
-        if (screens[name]) {
-             screens[name].classList.toggle('active', name === screenName);
-        } else {
-            console.warn(`Screen element not found: ${name}`);
-        }
-    });
-    gameState.currentScreen = screenName;
-}
-
-function showNotification(message, type = 'info') {
-    const notifications = document.getElementById('notifications');
-     if (!notifications) {
-        console.error("Notifications element not found!");
-        return;
-     }
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-
-    notifications.appendChild(notification);
-
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-function updateConnectionStatus(connected) {
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-text');
-
-     if (!statusDot || !statusText) {
-        console.warn("Status elements (dot/text) not found.");
-        return; // Elemente existieren nicht, Funktion beenden
-     }
-
-    if (connected) {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Verbunden';
-    } else {
-        statusDot.classList.remove('connected');
-        statusText.textContent = 'Offline';
-    }
-}
-
-// Grid Creation Functions
-function createGrid(containerId, isEnemy = false) {
-    const container = document.getElementById(containerId);
-     if (!container) {
-        console.error(`Grid container element not found: ${containerId}`);
-        return;
-     }
-    container.innerHTML = '';
-
-    // Create header row
-    container.appendChild(createGridCell('', true));
-    for (let i = 0; i < 10; i++) {
-        container.appendChild(createGridCell(String.fromCharCode(65 + i), true));
-    }
-
-    // Create grid cells
-    for (let row = 0; row < 10; row++) {
-        container.appendChild(createGridCell((row + 1).toString(), true));
-
-        for (let col = 0; col < 10; col++) {
-            const cell = createGridCell('', false);
-            cell.dataset.row = row;
-            cell.dataset.col = col;
-
-            if (isEnemy) {
-                cell.classList.add('enemy-cell');
-                cell.addEventListener('click', () => handleEnemyCellClick(row, col));
-            }
-
-            container.appendChild(cell);
-        }
-    }
-}
-
-function createGridCell(content, isHeader) {
-    const cell = document.createElement('div');
-    cell.className = isHeader ? 'grid-cell grid-header' : 'grid-cell';
-    cell.textContent = content;
-    return cell;
-}
-
-// --- NEU: Funktion, um sicherzustellen, dass der Nutzer angemeldet ist, bevor Aktionen ausgeführt werden
-function isAuthenticated() {
-     if (gameState.playerId) {
-         return true;
-     } else {
-         showNotification('Bitte warte auf die Anmeldung...', 'warning');
-         return false;
-     }
-}
-
-// Lobby Functions
-function createLobby() {
-    // --- NEU: Prüfe, ob der Nutzer angemeldet ist
-    if (!isAuthenticated()) return;
-
-
-    const playerNameInput = document.getElementById('playerName');
-     if (!playerNameInput) {
-        console.error("Player name input element not found!");
-        return;
-     }
-
-    const playerName = playerNameInput.value.trim();
-
-
-    if (!playerName) {
-        showNotification('Bitte gib einen Namen ein!', 'error');
-        return;
-    }
-
-    gameState.playerName = playerName;
-    // gameState.playerId wird jetzt von Firebase Auth gesetzt, NICHT hier!
-    gameState.lobbyId = generateLobbyCode();
-    gameState.isHost = true;
-
-    // Create lobby in Firebase using modular syntax
-    gameState.lobbyRef = ref(database, `lobbies/${gameState.lobbyId}`); // MODULAR: ref()
-
-    const lobbyData = {
-        created: serverTimestamp(), // MODULAR: serverTimestamp()
-        host: gameState.playerId, // Verwende die Auth UID als Host ID
-        players: {
-            // Verwende die Auth UID als Schlüssel für den Spieler
-            [gameState.playerId]: {
-                name: playerName,
-                ready: false,
-                board: null,
-                ships: null, // Initially null
-                shots: []
-            }
-        },
-        gameState: 'waiting',
-        currentTurn: null,
-        winner: null
-    };
-
-    set(gameState.lobbyRef, lobbyData) // MODULAR: set()
-        .then(() => {
-            setupLobbyListeners();
-            showScreen('waiting');
-            const lobbyCodeDisplay = document.getElementById('lobbyCodeDisplay');
-             if (lobbyCodeDisplay) {
-                 lobbyCodeDisplay.textContent = gameState.lobbyId;
-             } else {
-                 console.warn("Lobby code display element not found.");
-             }
-            showNotification('Lobby erstellt! Teile den Code mit deinem Gegner.', 'success');
-        }).catch(error => {
-            showNotification('Fehler beim Erstellen der Lobby: ' + error.message, 'error');
-        });
-}
-
-function joinLobby() {
-     // --- NEU: Prüfe, ob der Nutzer angemeldet ist
-    if (!isAuthenticated()) return;
-
-
-    const joinPlayerNameInput = document.getElementById('joinPlayerName');
-    const lobbyCodeInput = document.getElementById('lobbyCode');
-     if (!joinPlayerNameInput || !lobbyCodeInput) {
-         console.error("Join lobby input elements not found!");
-         return;
-     }
-
-    const playerName = joinPlayerNameInput.value.trim();
-    const lobbyCode = lobbyCodeInput.value.trim().toUpperCase();
-
-
-    if (!playerName || !lobbyCode) {
-        showNotification('Bitte fülle alle Felder aus!', 'error');
-        return;
-    }
-
-    gameState.playerName = playerName;
-     // gameState.playerId wird jetzt von Firebase Auth gesetzt, NICHT hier!
-    gameState.lobbyId = lobbyCode;
-    gameState.isHost = false;
-
-    // Check if lobby exists using modular syntax
-    const lobbyToCheckRef = ref(database, `lobbies/${gameState.lobbyId}`); // MODULAR: ref()
-
-    get(lobbyToCheckRef) // MODULAR: get() for single read
-        .then(snapshot => {
-            if (!snapshot.exists()) {
-                showNotification('Lobby nicht gefunden!', 'error');
-                return;
-            }
-
-            const lobbyData = snapshot.val();
-            const playerCount = lobbyData.players ? Object.keys(lobbyData.players).length : 0; // Handle case with no players yet
-
-            if (playerCount >= 2) {
-                showNotification('Lobby ist voll!', 'error');
-                return;
-            }
-
-            // Join lobby using modular syntax
-            gameState.lobbyRef = lobbyToCheckRef; // Store the reference
-            // Verwende die Auth UID als Schlüssel für den Spieler
-            const newPlayerRef = child(gameState.lobbyRef, `players/${gameState.playerId}`); // MODULAR: child()
-
-            set(newPlayerRef, { // MODULAR: set()
-                name: playerName,
-                ready: false,
-                board: null,
-                ships: null, // Initially null
-                shots: []
-            }).then(() => {
-                setupLobbyListeners();
-                showScreen('waiting');
-                showNotification('Lobby beigetreten!', 'success');
-            }).catch(error => {
-                 showNotification('Fehler beim Beitreten (Spieler hinzufügen): ' + error.message, 'error');
-            });
-    }).catch(error => {
-        showNotification('Fehler beim Beitreten (Lobby prüfen): ' + error.message, 'error');
-    });
-}
-
-function setupLobbyListeners() {
-    if (!gameState.lobbyRef) {
-        console.error("Lobby reference is not set.");
-        return;
-    }
-
-    // Listen for player changes using modular syntax
-    const playersRef = child(gameState.lobbyRef, 'players'); // MODULAR: child()
-    onValue(playersRef, snapshot => { // MODULAR: onValue()
-        const players = snapshot.val() || {};
-        updatePlayersList(players);
-
-        // Check if both players are present
-        // --- NEU: Füge eine zusätzliche Prüfung hinzu, ob der aktuelle Spieler angemeldet ist,
-        // bevor du den Screen wechselst.
-        if (Object.keys(players).length === 2 && gameState.currentScreen === 'waiting' && gameState.playerId) {
-            // Optional: Add a small delay to ensure UI updates
-             // --- NEU: Stelle sicher, dass beide Spieler wirklich in der Lobby-Datenstruktur sind,
-             // deren Keys den angemeldeten UIDs entsprechen.
-             const playerIdsInLobby = Object.keys(players);
-             if (playerIdsInLobby.includes(gameState.playerId) && playerIdsInLobby.length === 2) {
-                 setTimeout(() => {
-                    showScreen('placement');
-                    initializePlacement();
-                 }, 500); // Reduced delay slightly
-             } else {
-                 // Dies sollte nicht passieren, wenn alles korrekt läuft, aber gut zur Absicherung
-                 console.warn("Lobby has 2 players, but current player not found or unexpected state.");
-             }
-        }
-    });
-
     // Listen for game state changes using modular syntax
      const gameStateRef = child(gameState.lobbyRef, 'gameState'); // MODULAR: child()
     onValue(gameStateRef, snapshot => { // MODULAR: onValue()
@@ -374,5 +7,198 @@ function setupLobbyListeners() {
         if (state === 'playing' && gameState.currentScreen !== 'game') {
             showScreen('game');
             initializeGame(); // Initialize game when state becomes 'playing'
-        } else if (state === 'gameover'
-                   }
+        } else if (state === 'gameover' && gameState.currentScreen !== 'gameover') { // <-- Hier wurde die Bedingung vervollständigt
+            showScreen('gameover');
+             // You might want to fetch the winner here
+             get(child(gameState.lobbyRef, 'winner')).then(winnerSnapshot => {
+                 const winnerId = winnerSnapshot.val();
+                 const winnerName = winnerId === gameState.playerId ? 'Du' : 'Gegner'; // Basic winner name display
+                 const gameOverMessageElement = document.getElementById('gameOverMessage');
+                 if (gameOverMessageElement) {
+                     gameOverMessageElement.textContent = `${winnerName} hat gewonnen!`; // Assuming you have this element
+                 } else {
+                     console.warn("Game over message element not found.");
+                 }
+             });
+        }
+         // <-- HIER FEHLTE DIE SCHLIESSENDE KLAMMER für die Funktion, die onValue übergeben wird
+    }); // <-- HIER FEHLTE DIE SCHLIESSENDE KLAMMER für onValue
+
+
+    // Listen for turn changes using modular syntax
+    const currentTurnRef = child(gameState.lobbyRef, 'currentTurn'); // MODULAR: child()
+    onValue(currentTurnRef, snapshot => { // MODULAR: onValue()
+        gameState.currentTurn = snapshot.val();
+        updateTurnIndicator(); // <-- Diese Funktion muss existieren oder implementiert werden
+    });
+
+     // IMPORTANT: Set up listener for enemy shots ONLY when the game starts and the enemy ID is known
+     // This listener should ideally be set up within initializeGame() or after the enemyId is determined.
+     // Leaving this comment here for now, as getEnemyId() is still a placeholder.
+     /*
+    if (gameState.currentScreen === 'game') {
+        const enemyId = getEnemyId(); // Need actual implementation for getEnemyId()
+        if (enemyId) {
+            const enemyShotsRef = child(gameState.lobbyRef, `players/${enemyId}/shots`);
+             onChildAdded(enemyShotsRef, snapshot => { // MODULAR: onChildAdded()
+                const shot = snapshot.val();
+                handleEnemyShot(shot); // <-- Diese Funktion muss existieren oder implementiert werden
+             });
+        }
+    }
+    */
+
+    // Handle disconnection using modular syntax
+    const currentPlayerRef = child(gameState.lobbyRef, `players/${gameState.playerId}`); // MODULAR: child()
+    onDisconnect(currentPlayerRef).remove(); // MODULAR: onDisconnect().remove()
+
+// <-- HIER FEHLTE DIE SCHLIESSENDE KLAMMER für die setupLobbyListeners Funktion
+}
+
+// --- NEU: FÜGEN SIE HIER DIE FUNKTIONEN HINZU, DIE NOCH FEHLEN ODER UNVOLLSTÄNDIG WAREN
+// z.B.
+function updatePlayersList(players) {
+    const playersList = document.getElementById('playersList');
+     if (!playersList) {
+        console.warn("Players list element not found.");
+        return;
+     }
+    // Hier kommt die Logik, um die Spielerliste anzuzeigen
+    // Beispiel: playersList.innerHTML = Object.values(players).map(p => `<li>${p.name} ${p.ready ? '(Bereit)' : ''}</li>`).join('');
+}
+
+// Funktion, die aufgerufen wird, wenn der Benutzer angemeldet ist
+function handleUserAuthenticated(user) {
+    if (user) {
+        // Benutzer ist angemeldet
+        gameState.playerId = user.uid;
+        console.log("Firebase User Authenticated. UID:", user.uid);
+        showNotification(`Angemeldet als: ${user.uid.substring(0, 6)}...`, 'info'); // Kurze Info-Nachricht
+        showScreen('lobby'); // Zeige jetzt den Lobby-Screen
+
+        // --- NEU: Optional: OnDisconnect für den angemeldeten Benutzer einrichten
+        // Dieser Listener sorgt dafür, dass der Benutzer aus der "onlineUsers" Liste entfernt wird, wenn er offline geht.
+        // Sie müssen eine "onlineUsers" Liste in Ihrer Datenbank führen, falls Sie das wollen.
+        /*
+        const onlineUsersRef = ref(database, 'onlineUsers/' + user.uid);
+        onDisconnect(onlineUsersRef).remove();
+        set(onlineUsersRef, true); // Oder setzen Sie hier den Namen des Spielers
+        */
+
+    } else {
+        // Benutzer ist abgemeldet (sollte bei anonymer Auth nicht passieren, außer der Token läuft ab)
+        gameState.playerId = null;
+        console.log("Firebase User is signed out.");
+        showNotification('Abgemeldet. Bitte neu laden.', 'warning');
+        // Optional: Zurück zum Ladescreen oder Fehlermeldung anzeigen
+        showScreen('loading');
+         showLoading(true);
+    }
+     // --- NEU: Ladeanzeige ausblenden, sobald der Auth-Status bekannt ist
+     showLoading(false);
+}
+
+// Funktion, die das Spiel initialisiert (muss noch implementiert werden)
+function initializeGame() {
+    console.log("Spiel wird initialisiert...");
+    // Hier kommt die Logik zur Einrichtung des Spielfelds etc.
+    createGrid('myBoardContainer', false); // Eigene Tafel erstellen
+    createGrid('enemyBoardContainer', true); // Gegnerische Tafel erstellen
+    // updateTurnIndicator(); // Stellen Sie sicher, dass der Zugindikator korrekt gesetzt wird
+    // Richten Sie jetzt den enemyShotsRef Listener ein, wenn der Gegner bekannt ist!
+}
+
+// Funktion, die den Zugindikator aktualisiert (muss noch implementiert werden)
+function updateTurnIndicator() {
+     console.log("Zugindikator wird aktualisiert. Aktueller Zug:", gameState.currentTurn);
+     // Hier kommt die Logik, um anzuzeigen, wer am Zug ist
+     const turnIndicatorElement = document.getElementById('turnIndicator'); // Element in Ihrer HTML
+     if (turnIndicatorElement) {
+         if (gameState.currentTurn === gameState.playerId) {
+             turnIndicatorElement.textContent = 'Du bist am Zug!';
+         } else if (gameState.currentTurn) {
+             // Wenn der Gegner angemeldet ist, könnten Sie hier seinen Namen anzeigen
+             // Dazu müssten Sie die Spielinformationen aus der Datenbank lesen
+             turnIndicatorElement.textContent = 'Gegner ist am Zug!';
+         } else {
+             turnIndicatorElement.textContent = 'Warte auf den Zug...';
+         }
+     } else {
+         console.warn("Turn indicator element not found.");
+     }
+}
+
+// Funktion, die den Klick auf das gegnerische Feld verarbeitet (muss noch implementiert werden)
+function handleEnemyCellClick(row, col) {
+     console.log(`Gegnerisches Feld geklickt: ${row}, ${col}`);
+     // Hier kommt die Logik, um einen Schuss abzugeben
+     // Stellen Sie sicher, dass nur geschossen werden kann, wenn man am Zug ist
+}
+
+// Funktion, um die ID des gegnerischen Spielers zu bekommen (muss noch implementiert werden)
+// Dies hängt von der genauen Struktur Ihrer players Daten in der Lobby ab
+function getEnemyId(players) {
+     if (!players || !gameState.playerId) return null;
+     const playerIds = Object.keys(players);
+     // Finden Sie die ID, die nicht die eigene ist
+     return playerIds.find(id => id !== gameState.playerId);
+}
+
+// Funktion, um einen gegnerischen Schuss zu verarbeiten (muss noch implementiert werden)
+function handleEnemyShot(shot) {
+     console.log("Gegnerischer Schuss erhalten:", shot);
+     // Hier kommt die Logik, um den Schuss auf dem eigenen Brett zu verarbeiten
+     // Markieren Sie das Feld als getroffen oder verfehlt
+     // Prüfen Sie, ob ein Schiff getroffen wurde oder versenkt ist
+}
+
+
+// Funktion, die die Schiffsplatzierung initialisiert (muss noch implementiert werden)
+function initializePlacement() {
+    console.log("Schiffsplatzierung wird initialisiert...");
+    // Logik zum Anzeigen der eigenen Tafel, Schiffe etc.
+    createGrid('myBoardContainer', false); // Eigene Tafel erstellen
+    // Platzierungslogik hier...
+    // showScreen('placement'); // Dieser Screen wird bereits in setupLobbyListeners gewechselt
+}
+
+
+// --- NEU: Starten des Authentifizierungsprozesses, wenn die Seite geladen ist
+// Dies ist der erste Code, der nach der Initialisierung ausgeführt wird.
+showLoading(true); // Ladeanzeige zeigen, während Auth läuft
+
+onAuthStateChanged(auth, handleUserAuthenticated); // Listener einrichten
+
+// --- Optional: Anonyme Anmeldung versuchen, falls der Nutzer nicht bereits angemeldet ist
+// onAuthStateChanged wird auch bei bestehender Sitzung einmal getriggert
+// Daher ist es sicherer, signInAnonymously nur aufzurufen, wenn onAuthStateChanged anzeigt,
+// dass *kein* Nutzer angemeldet ist, ODER wenn Sie sicher sind, dass Sie immer eine neue anonyme Sitzung wollen.
+// Für den Anfang können wir es hier aufrufen, es schadet normalerweise nicht, wenn onAuthStateChanged schon reagiert hat.
+signInAnonymously(auth).catch((error) => {
+    console.error("Anonyme Anmeldung fehlgeschlagen:", error);
+    showNotification('Fehler bei der Anmeldung. Bitte neu laden.', 'error');
+     showLoading(false); // Ladeanzeige ausblenden bei Fehler
+    // Hier könnten Sie eine Fehlermeldung anzeigen oder den Benutzer bitten, es erneut zu versuchen.
+});
+
+
+// Fügen Sie hier eventuell Event Listener für Buttons hinzu (z.B. für createLobby, joinLobby)
+// Diese Listener MÜSSEN außerhalb aller Funktionen liegen und nach der Funktionsdefinition kommen.
+document.getElementById('createLobbyButton').addEventListener('click', createLobby);
+document.getElementById('joinLobbyButton').addEventListener('click', joinLobby);
+
+// Beispiel für andere Button-Listener (Platzierung, Schuss etc.)
+// document.getElementById('placeShipButton').addEventListener('click', placeShip);
+// document.getElementById('fireButton').addEventListener('click', handleEnemyCellClick); // Beispiel, muss angepasst werden
+
+// --- NEU: Füge einen Event Listener für den Verbindungsstatus hinzu
+const connectedRef = ref(database, ".info/connected");
+onValue(connectedRef, (snap) => {
+  if (snap.val() === true) {
+    console.log("Verbunden mit der Firebase Realtime Database.");
+    updateConnectionStatus(true);
+  } else {
+    console.log("Verbindung zur Firebase Realtime Database verloren.");
+     updateConnectionStatus(false);
+  }
+});
