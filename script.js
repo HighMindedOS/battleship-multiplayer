@@ -1,12 +1,12 @@
-// Firebase Configuration - WICHTIG: Ersetzen Sie diese mit Ihrer eigenen Config!
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyD...",
+  authDomain: "realtime-database-aktivieren.firebaseapp.com",
+  databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "realtime-database-aktivieren",
+  storageBucket: "realtime-database-aktivieren.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef..."
+};
 };
 
 // Initialize Firebase
