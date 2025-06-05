@@ -52,8 +52,7 @@
     const currentPlayerRef = child(gameState.lobbyRef, `players/${gameState.playerId}`); // MODULAR: child()
     onDisconnect(currentPlayerRef).remove(); // MODULAR: onDisconnect().remove()
 
-// <-- HIER FEHLTE DIE SCHLIESSENDE KLAMMER für die setupLobbyListeners Funktion
-}
+// <-- HIER FEHLTE DIE SCHLIESSENDE KLAMMER für die setupLobbyListeners Funktion}
 
 // --- NEU: FÜGEN SIE HIER DIE FUNKTIONEN HINZU, DIE NOCH FEHLEN ODER UNVOLLSTÄNDIG WAREN
 // z.B.
