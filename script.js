@@ -375,3 +375,4 @@ function setupLobbyListeners() {
             showScreen('game');
             initializeGame(); // Initialize game when state becomes 'playing'
         } else if (state === 'gameover'
+                   }
