@@ -2,6 +2,9 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 
+// --- NEU: Importiere die benötigten Funktionen aus dem modularen Firebase Authentication SDK
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+
 // Importiere die benötigten Funktionen aus dem modularen Firebase Realtime Database SDK
 // Achte darauf, alle benötigten Funktionen zu importieren, die du im Code verwendest
 import { getDatabase, ref, set, onValue, push, remove, update, child, serverTimestamp, onDisconnect, get, onChildAdded } from "firebase/database";
@@ -29,14 +32,18 @@ const app = initializeApp(firebaseConfig);
 // Initialize Analytics (optional, but good to keep if you use it)
 //const analytics = getAnalytics(app); // Deaktiviert, da analytics nicht im Code verwendet wird
 
+// --- NEU: Initialize Firebase Authentication
+const auth = getAuth(app);
+
 // Initialize Realtime Database using the modular approach
 const database = getDatabase(app); // Hol die Datenbank-Instanz von deiner initialisierten App
 
 // Game State
 const gameState = {
-    currentScreen: 'lobby',
+    currentScreen: 'loading', // --- NEU: Start mit 'loading' bis der Nutzer angemeldet ist
     playerName: '',
-    playerId: null,
+    // playerId wird jetzt durch die Firebase Auth UID gesetzt
+    playerId: null, // Dies wird von Firebase Auth gesetzt
     lobbyId: null,
     lobbyRef: null, // Diese Variable wird nun eine modulare Datenbank-Referenz halten
     isHost: false,
@@ -75,12 +82,23 @@ const gameState = {
 
 // DOM Elements
 const screens = {
+    loading: document.getElementById('loadingScreen'), // --- NEU: Ein Ladescreen
     lobby: document.getElementById('lobbyScreen'),
     waiting: document.getElementById('waitingScreen'),
     placement: document.getElementById('placementScreen'),
     game: document.getElementById('gameScreen'),
     gameover: document.getElementById('gameOverScreen')
 };
+
+// --- NEU: Funktion zum Anzeigen eines Ladezustands, während auf Auth gewartet wird
+function showLoading(isLoading) {
+    if (isLoading) {
+        document.getElementById('loadingScreen').style.display = 'flex';
+    } else {
+         document.getElementById('loadingScreen').style.display = 'none';
+    }
+}
+
 
 // Utility Functions
 function generateLobbyCode() {
@@ -89,13 +107,22 @@ function generateLobbyCode() {
 
 function showScreen(screenName) {
     Object.keys(screens).forEach(name => {
-        screens[name].classList.toggle('active', name === screenName);
+        // Überprüfe, ob das Element existiert, bevor du classList änderst
+        if (screens[name]) {
+             screens[name].classList.toggle('active', name === screenName);
+        } else {
+            console.warn(`Screen element not found: ${name}`);
+        }
     });
     gameState.currentScreen = screenName;
 }
 
 function showNotification(message, type = 'info') {
     const notifications = document.getElementById('notifications');
+     if (!notifications) {
+        console.error("Notifications element not found!");
+        return;
+     }
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.textContent = message;
@@ -112,6 +139,11 @@ function updateConnectionStatus(connected) {
     const statusDot = document.querySelector('.status-dot');
     const statusText = document.querySelector('.status-text');
 
+     if (!statusDot || !statusText) {
+        console.warn("Status elements (dot/text) not found.");
+        return; // Elemente existieren nicht, Funktion beenden
+     }
+
     if (connected) {
         statusDot.classList.add('connected');
         statusText.textContent = 'Verbunden';
@@ -124,6 +156,10 @@ function updateConnectionStatus(connected) {
 // Grid Creation Functions
 function createGrid(containerId, isEnemy = false) {
     const container = document.getElementById(containerId);
+     if (!container) {
+        console.error(`Grid container element not found: ${containerId}`);
+        return;
+     }
     container.innerHTML = '';
 
     // Create header row
@@ -158,9 +194,30 @@ function createGridCell(content, isHeader) {
     return cell;
 }
 
+// --- NEU: Funktion, um sicherzustellen, dass der Nutzer angemeldet ist, bevor Aktionen ausgeführt werden
+function isAuthenticated() {
+     if (gameState.playerId) {
+         return true;
+     } else {
+         showNotification('Bitte warte auf die Anmeldung...', 'warning');
+         return false;
+     }
+}
+
 // Lobby Functions
 function createLobby() {
-    const playerName = document.getElementById('playerName').value.trim();
+    // --- NEU: Prüfe, ob der Nutzer angemeldet ist
+    if (!isAuthenticated()) return;
+
+
+    const playerNameInput = document.getElementById('playerName');
+     if (!playerNameInput) {
+        console.error("Player name input element not found!");
+        return;
+     }
+
+    const playerName = playerNameInput.value.trim();
+
 
     if (!playerName) {
         showNotification('Bitte gib einen Namen ein!', 'error');
@@ -168,7 +225,7 @@ function createLobby() {
     }
 
     gameState.playerName = playerName;
-    gameState.playerId = Date.now().toString();
+    // gameState.playerId wird jetzt von Firebase Auth gesetzt, NICHT hier!
     gameState.lobbyId = generateLobbyCode();
     gameState.isHost = true;
 
@@ -177,8 +234,9 @@ function createLobby() {
 
     const lobbyData = {
         created: serverTimestamp(), // MODULAR: serverTimestamp()
-        host: gameState.playerId,
+        host: gameState.playerId, // Verwende die Auth UID als Host ID
         players: {
+            // Verwende die Auth UID als Schlüssel für den Spieler
             [gameState.playerId]: {
                 name: playerName,
                 ready: false,
@@ -196,7 +254,12 @@ function createLobby() {
         .then(() => {
             setupLobbyListeners();
             showScreen('waiting');
-            document.getElementById('lobbyCodeDisplay').textContent = gameState.lobbyId;
+            const lobbyCodeDisplay = document.getElementById('lobbyCodeDisplay');
+             if (lobbyCodeDisplay) {
+                 lobbyCodeDisplay.textContent = gameState.lobbyId;
+             } else {
+                 console.warn("Lobby code display element not found.");
+             }
             showNotification('Lobby erstellt! Teile den Code mit deinem Gegner.', 'success');
         }).catch(error => {
             showNotification('Fehler beim Erstellen der Lobby: ' + error.message, 'error');
@@ -204,8 +267,20 @@ function createLobby() {
 }
 
 function joinLobby() {
-    const playerName = document.getElementById('joinPlayerName').value.trim();
-    const lobbyCode = document.getElementById('lobbyCode').value.trim().toUpperCase();
+     // --- NEU: Prüfe, ob der Nutzer angemeldet ist
+    if (!isAuthenticated()) return;
+
+
+    const joinPlayerNameInput = document.getElementById('joinPlayerName');
+    const lobbyCodeInput = document.getElementById('lobbyCode');
+     if (!joinPlayerNameInput || !lobbyCodeInput) {
+         console.error("Join lobby input elements not found!");
+         return;
+     }
+
+    const playerName = joinPlayerNameInput.value.trim();
+    const lobbyCode = lobbyCodeInput.value.trim().toUpperCase();
+
 
     if (!playerName || !lobbyCode) {
         showNotification('Bitte fülle alle Felder aus!', 'error');
@@ -213,7 +288,7 @@ function joinLobby() {
     }
 
     gameState.playerName = playerName;
-    gameState.playerId = Date.now().toString();
+     // gameState.playerId wird jetzt von Firebase Auth gesetzt, NICHT hier!
     gameState.lobbyId = lobbyCode;
     gameState.isHost = false;
 
@@ -237,6 +312,7 @@ function joinLobby() {
 
             // Join lobby using modular syntax
             gameState.lobbyRef = lobbyToCheckRef; // Store the reference
+            // Verwende die Auth UID als Schlüssel für den Spieler
             const newPlayerRef = child(gameState.lobbyRef, `players/${gameState.playerId}`); // MODULAR: child()
 
             set(newPlayerRef, { // MODULAR: set()
@@ -270,12 +346,22 @@ function setupLobbyListeners() {
         updatePlayersList(players);
 
         // Check if both players are present
-        if (Object.keys(players).length === 2 && gameState.currentScreen === 'waiting') {
+        // --- NEU: Füge eine zusätzliche Prüfung hinzu, ob der aktuelle Spieler angemeldet ist,
+        // bevor du den Screen wechselst.
+        if (Object.keys(players).length === 2 && gameState.currentScreen === 'waiting' && gameState.playerId) {
             // Optional: Add a small delay to ensure UI updates
-            setTimeout(() => {
-                showScreen('placement');
-                initializePlacement();
-            }, 500); // Reduced delay slightly
+             // --- NEU: Stelle sicher, dass beide Spieler wirklich in der Lobby-Datenstruktur sind,
+             // deren Keys den angemeldeten UIDs entsprechen.
+             const playerIdsInLobby = Object.keys(players);
+             if (playerIdsInLobby.includes(gameState.playerId) && playerIdsInLobby.length === 2) {
+                 setTimeout(() => {
+                    showScreen('placement');
+                    initializePlacement();
+                 }, 500); // Reduced delay slightly
+             } else {
+                 // Dies sollte nicht passieren, wenn alles korrekt läuft, aber gut zur Absicherung
+                 console.warn("Lobby has 2 players, but current player not found or unexpected state.");
+             }
         }
     });
 
@@ -288,46 +374,4 @@ function setupLobbyListeners() {
         if (state === 'playing' && gameState.currentScreen !== 'game') {
             showScreen('game');
             initializeGame(); // Initialize game when state becomes 'playing'
-        } else if (state === 'gameover' && gameState.currentScreen !== 'gameover') {
-            showScreen('gameover');
-             // You might want to fetch the winner here
-             get(child(gameState.lobbyRef, 'winner')).then(winnerSnapshot => {
-                 const winnerId = winnerSnapshot.val();
-                 const winnerName = winnerId === gameState.playerId ? 'Du' : 'Gegner'; // Basic winner name display
-                 document.getElementById('gameOverMessage').textContent = `${winnerName} hat gewonnen!`; // Assuming you have this element
-             });
-        }
-    });
-
-
-    // Listen for turn changes using modular syntax
-    const currentTurnRef = child(gameState.lobbyRef, 'currentTurn'); // MODULAR: child()
-    onValue(currentTurnRef, snapshot => { // MODULAR: onValue()
-        gameState.currentTurn = snapshot.val();
-        updateTurnIndicator();
-    });
-
-     // IMPORTANT: Set up listener for enemy shots ONLY when the game starts and the enemy ID is known
-     // This listener should ideally be set up within initializeGame() or after the enemyId is determined.
-     // Leaving this comment here for now, as getEnemyId() is still a placeholder.
-     /*
-    if (gameState.currentScreen === 'game') {
-        const enemyId = getEnemyId(); // Need actual implementation for getEnemyId()
-        if (enemyId) {
-            const enemyShotsRef = child(gameState.lobbyRef, `players/${enemyId}/shots`);
-             onChildAdded(enemyShotsRef, snapshot => { // MODULAR: onChildAdded()
-                const shot = snapshot.val();
-                handleEnemyShot(shot);
-             });
-        }
-    }
-    */
-
-    // Handle disconnection using modular syntax
-    const currentPlayerRef = child(gameState.lobbyRef, `players/${gameState.playerId}`); // MODULAR: child()
-    onDisconnect(currentPlayerRef).remove(); // MODULAR: onDisconnect().remove()
-}
-
-function updatePlayersList(players) {
-    const playersList = document.getElementById('playersList');
-}
+        } else if (state === 'gameover'
