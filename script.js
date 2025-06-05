@@ -330,3 +330,4 @@ function setupLobbyListeners() {
 
 function updatePlayersList(players) {
     const playersList = document.getElementById('playersList');
+}
