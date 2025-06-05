@@ -1,6 +1,9 @@
 // Test
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+// Importiere die Datenbank-Funktion aus dem modularen SDK
+import { getDatabase, ref, set, onValue, push, remove, update } from "firebase/database"; // Füge hier alle benötigten Datenbank-Funktionen hinzu
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -17,14 +20,16 @@ const firebaseConfig = {
   measurementId: "G-TKN9TP77G3"
 };
 
-// Initialize Firebase
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+
+// Initialize Realtime Database using the modular approach
+const database = getDatabase(app); // Hol die Datenbank-Instanz von deiner initialisierten App
 
 // Game State
+// ... der Rest deines GameState Objekts
+
 const gameState = {
     currentScreen: 'lobby',
     playerName: '',
