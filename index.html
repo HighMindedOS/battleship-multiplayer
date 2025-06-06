@@ -46,8 +46,12 @@
         <!-- Waiting Screen -->
         <div id="waitingScreen" class="screen">
             <div class="waiting-content">
-                <h2>Lobby Code: <span id="lobbyCodeDisplay"></span></h2>
-                <button id="copyCodeBtn" class="icon-btn">📋</button>
+                <h2>Lobby</h2>
+                
+                <div class="lobby-code-box" id="copyLobbyCode">
+                    <div id="lobbyCodeDisplay"></div>
+                    <div class="copy-hint">Klicken zum Kopieren</div>
+                </div>
                 
                 <div class="players-list" id="playersList">
                     <!-- Players will be added dynamically -->
@@ -85,13 +89,18 @@
 
         <!-- Game Screen -->
         <div id="gameScreen" class="screen">
+            <!-- Volume Control -->
+            <div class="volume-control">
+                <label>🔊</label>
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="50">
+            </div>
+            
             <div class="game-layout">
                 <!-- Left: Game Log -->
                 <div class="game-sidebar left">
                     <div class="ships-status-header">Deine Schiffe</div>
                     <div id="playerShipsStatus" class="ships-display"></div>
-                    <h3>Spielverlauf</h3>
-                    <div id="gameLog" class="game-log"></div>
+                    <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
                 </div>
 
                 <!-- Center: Game Boards -->

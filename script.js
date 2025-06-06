@@ -1,4 +1,59 @@
-// Firebase Configuration
+    // Audio
+    volume: 0.5,
+    sounds: {
+        hit: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIF2m98OScTgwOUarf7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT'),
+        miss: new Audio('data:audio/wav;base64,UklGRvIEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU4EAADx/f/x9/Xx8+/x7+vx7+vx7evx7+vx7+vx8+/x8/Hx9/Xx9/Xx+/Xx/f8BAAAABQQBCQgFDQwJERIRFRQVGRgZHRwdIiEhJiUlKikpLi0tMjEzNzY3OzoAPQAAQAQHTElNT01PUVFTVVdZW11fYWNlZ2lram1vcXN1dnd6ent+gIKDhoeIiouNj5CRk5SWmJmam5yenqCho6Slp6mqq6yvr7Cxs7S2uLm6u7y+v8DCxMTFx8jKy8vNz9DR0dLU1dbY2drd3t7f4eLj5OXn5+jp6+zt7u/w8fLz9fb3+Pn6/P39/gAAAQAAAgQDBQUFBggIDAoKCw4OEhISERQVGRcZGBsbHx8hICQjJCcmKSgrLS4uMDEyNDU4Nzk6Ozw/QEFCREVHSElLTU5PUFNUVVdXWVpbXF5hYmNlZ2hpa2ttb3BxcnV2d3h5e3x9f4GBg4WGh4iKi4yOj5CSlJWXmJmbm52en6GjpKWmp6mqrKytrq+wsbKztLW2t7i5uru8vb6/wMHBwsPExcXGx8jJycrLzMzNzs7P0NDR0dLS0='),
+        sunk: new Audio('data:audio/wav;base64,UklGRgYGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YV8FAAAGBgoJDQwQDxMSFhUZGBsaHRweHR8eHx4fHh8dHBsaGRcWFBMQDgwJBwUCAP79+vn39PPw7uzp6Ofk4uDe3Nva2djY19nZ29zh5Onv9vwDBgsMEBYcISUpLDA0OD1AREhLT1JUVlhaWltbW1paWFZUUk9LRkE7NC4nHxgRCgL79O3m4Nrv1M/KxsK+uraysK+urq+xs7a7wcrS2+fz/wIMFh8pMjg+Q0dKTU9QUVFQT01KRkE7My0mHRQKAPXq39TMwr66trKurKqpqKmpqq2vtLvC0dzm8f0HEBkjLDU9RUtRVVhcX2JjZWVmZmVlY2BcV1JNRz81LCQZDwX79Ovj29TLwrm1sq+sqainpqWlpqiqrrK2vcTP3Of0/wkSHCYvOEJLUVZaXmFkZmdpamxsbWxqZ2RgW1VOSEApIBgNAvjt49rRyL+5tLCtqqekoZ+fnp+hoKGkpqqvtLvEy9Xg6vUCDBYgKTI6QUdNUldbX2JmaGtsb3BwcHBwaWVhXFZOSEApIRcNBPnu5NvTyr+2sq6qpqGempeVlJOUlZiZnJ+kqrC2vsbQ3Of0'),
+        turn: new Audio('data:audio/wav;base64,UklGRjIFAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQ4FAACZmZmZmZmamZqamZqamZmZmZmZmpmamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmpmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmamZmZmpmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZqamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmamZmZmZmZmZmZmZmZmZmamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZqamZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm// Game State
+const gameState = {
+    currentScreen: 'lobby',
+    playerName: '',
+    playerId: null,
+    lobbyId: null,
+    lobbyRef: null,
+    isHost: false,
+    gamePhase: 'waiting',
+    currentTurn: null,
+    canShootAgain: false,
+    isFirstTurn: true, // Track first turn for sound
+    
+    // Ship Configuration
+    shipTypes: [
+        { name: 'Träger', size: 5, count: 1, icon: '🚢' },
+        { name: 'Schlachtschiff', size: 4, count: 1, icon: '⚓' },
+        { name: 'Kreuzer', size: 3, count: 1, icon: '🛥️' },
+        { name: 'U-Boot', size: 3, count: 1, icon: '🚤' },
+        { name: 'Zerstörer', size: 2, count: 1, icon: '⛵' }
+    ],
+    
+    // Game Data
+    myBoard: Array(10).fill(null).map(() => Array(10).fill('water')),
+    enemyBoard: Array(10).fill(null).map(() => Array(10).fill('unknown')),
+    myShips: [],
+    enemyShips: [],
+    
+    // Placement Data
+    selectedShip: null,
+    shipOrientation: 'horizontal',
+    placedShips: [],
+    
+    // Stats
+    shots: 0,
+    hits: 0,
+    sunkShips: 0,
+    
+    // Track enemy sunk ships
+    enemySunkShips: {},
+    
+    // Cheats - Always Active
+    probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
+    bestShot: null,
+    
+    // Audio
+    volume: 0.5,
+    sounds: {
+        hit: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIF2m98OScTgwOUarf7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT') },
+        miss: new Audio('data:audio/wav;base64,UklGRvIEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU4EAADx/f/x9/Xx8+/x7+vx7+vx7evx7+vx7+vx8+/x8/Hx9/Xx9/Xx+/Xx/f8BAAAABQQBCQgFDQwJERIRFRQVGRgZHRwdIiEhJiUlKikpLi0tMjEzNzY3OzoAPQAAQAQHTElNT01PUVFTVVdZW11fYWNlZ2lram1vcXN1dnd6ent+gIKDhoeIiouNj5CRk5SWmJmam5yenqCho6Slp6mqq6yvr7Cxs7S2uLm6u7y+v8DCxMTFx8jKy8vNz9DR0dLU1dbY2drd3t7f4eLj5OXn5+jp6+zt7u/w8fLz9fb3+Pn6/P39/gAAAQAAAgQDBQUFBggIDAoKCw4OEhISERQVGRcZGBsbHx8hICQjJCcmKSgrLS4uMDEyNDU4Nzk6Ozw/QEFCREVHSElLTU5PUFNUVVdXWVpbXF5hYmNlZ2hpa2ttb3BxcnV2d3h5e3x9f4GBg4WGh4iKi4yOj5CSlJWXmJmbm52en6GjpKWmp6mqrKytrq+wsbKztLW2t7i5uru8vb6/wMHBwsPExcXGx8jJycrLzMzNzs7P0NDR0dLS0='),// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
   authDomain: "realtime-database-aktivieren.firebaseapp.com",
@@ -77,7 +132,29 @@ const screens = {
     gameover: document.getElementById('gameOverScreen')
 };
 
-// Utility Functions
+// Audio Helper Functions
+function initializeAudio() {
+    // Set volume for all sounds
+    Object.values(gameState.sounds).forEach(sound => {
+        sound.volume = gameState.volume;
+    });
+}
+
+function playSound(soundName) {
+    const sound = gameState.sounds[soundName];
+    if (sound) {
+        sound.currentTime = 0;
+        sound.volume = gameState.volume;
+        sound.play().catch(e => console.log('Sound play failed:', e));
+    }
+}
+
+function updateVolume(value) {
+    gameState.volume = value / 100;
+    Object.values(gameState.sounds).forEach(sound => {
+        sound.volume = gameState.volume;
+    });
+}
 function generateLobbyCode() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -87,6 +164,13 @@ function showScreen(screenName) {
         screens[name].classList.toggle('active', name === screenName);
     });
     gameState.currentScreen = screenName;
+    
+    // Add in-game class to body when in game screen
+    if (screenName === 'game') {
+        document.body.classList.add('in-game');
+    } else {
+        document.body.classList.remove('in-game', 'player-turn', 'enemy-turn', 'victory');
+    }
 }
 
 function showNotification(message, type = 'info') {
@@ -670,6 +754,12 @@ function updateTurnIndicator() {
         // Update body border for player turn
         document.body.classList.add('player-turn');
         document.body.classList.remove('enemy-turn');
+        
+        // Play turn sound only on first turn of the round
+        if (gameState.isFirstTurn) {
+            playSound('turn');
+            gameState.isFirstTurn = false;
+        }
     } else {
         turnIndicator.textContent = 'Gegner ist dran...';
         turnIndicator.style.color = 'var(--text-secondary)';
@@ -680,6 +770,9 @@ function updateTurnIndicator() {
         // Update body border for enemy turn
         document.body.classList.add('enemy-turn');
         document.body.classList.remove('player-turn');
+        
+        // Reset first turn flag for next player turn
+        gameState.isFirstTurn = true;
     }
 }
 
@@ -766,8 +859,14 @@ function handleShotResult(result) {
             
             updateShipStatus();
             
+            // Play sunk sound (not hit sound)
+            playSound('sunk');
+            
             // Check for victory
             checkVictory();
+        } else {
+            // Play hit sound only if not sunk
+            playSound('hit');
         }
         
         // IMPORTANT: Player gets another turn after a hit!
@@ -777,6 +876,7 @@ function handleShotResult(result) {
         updateRecommendation();
     } else {
         addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
+        playSound('miss');
         gameState.canShootAgain = false;
         // Switch turns only on miss
         switchTurn();
@@ -897,8 +997,25 @@ function updateShipStatus() {
         
         gameState.placedShips.forEach(ship => {
             const shipElement = document.createElement('div');
-            shipElement.className = `ship-status-item ${ship.sunk ? 'sunk' : ''}`;
-            shipElement.innerHTML = `${ship.type} (${ship.size})`;
+            shipElement.className = `ship-display-item ${ship.sunk ? 'sunk' : ''}`;
+            
+            const shipInfo = document.createElement('div');
+            const shipType = gameState.shipTypes.find(t => t.name === ship.type);
+            shipInfo.innerHTML = `
+                <span>${shipType.icon}</span>
+                <span>${ship.type} (${ship.size})</span>
+            `;
+            
+            const shipPreview = document.createElement('div');
+            shipPreview.className = 'ship-display-preview';
+            for (let i = 0; i < ship.size; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'ship-display-cell';
+                shipPreview.appendChild(cell);
+            }
+            
+            shipElement.appendChild(shipInfo);
+            shipElement.appendChild(shipPreview);
             playerShipsContainer.appendChild(shipElement);
         });
     }
@@ -911,8 +1028,24 @@ function updateShipStatus() {
         gameState.shipTypes.forEach((shipType) => {
             const shipElement = document.createElement('div');
             const isSunk = gameState.enemySunkShips[shipType.name] || false;
-            shipElement.className = `ship-status-item enemy-ship-item ${isSunk ? 'sunk' : ''}`;
-            shipElement.innerHTML = `${shipType.name} (${shipType.size})`;
+            shipElement.className = `ship-display-item enemy ${isSunk ? 'sunk' : ''}`;
+            
+            const shipInfo = document.createElement('div');
+            shipInfo.innerHTML = `
+                <span>${shipType.icon}</span>
+                <span>${shipType.name} (${shipType.size})</span>
+            `;
+            
+            const shipPreview = document.createElement('div');
+            shipPreview.className = 'ship-display-preview';
+            for (let i = 0; i < shipType.size; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'ship-display-cell';
+                shipPreview.appendChild(cell);
+            }
+            
+            shipElement.appendChild(shipInfo);
+            shipElement.appendChild(shipPreview);
             enemyShipsContainer.appendChild(shipElement);
         });
     }
@@ -954,7 +1087,20 @@ function handleGameOver() {
     });
 }
 
-function addToGameLog(message, type) {
+function surrenderGame() {
+    if (confirm('Willst du wirklich aufgeben?')) {
+        // Get enemy ID
+        const enemyId = getEnemyId();
+        
+        // Set enemy as winner
+        gameState.lobbyRef.update({
+            gameState: 'gameover',
+            winner: enemyId
+        });
+        
+        showNotification('Du hast aufgegeben!', 'warning');
+    }
+}
     const log = document.getElementById('gameLog');
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
@@ -965,10 +1111,16 @@ function addToGameLog(message, type) {
 
 // Auto-Recommendation System (Always Active)
 function updateRecommendation() {
+    const cheatDisplay = document.getElementById('cheatDisplay');
+    
     if (gameState.currentTurn !== gameState.playerId) {
         document.getElementById('recommendedShot').textContent = '-';
+        if (cheatDisplay) cheatDisplay.style.display = 'none';
         return;
     }
+    
+    // Show recommendation when it's player's turn
+    if (cheatDisplay) cheatDisplay.style.display = 'block';
     
     calculateProbabilityMap();
     const bestShot = findBestShot();
@@ -985,6 +1137,11 @@ function updateRecommendation() {
         const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${bestShot.row}"][data-col="${bestShot.col}"]`);
         if (cell) {
             cell.classList.add('recommended');
+        }
+    } else {
+        document.getElementById('recommendedShot').textContent = '-';
+    }
+}.add('recommended');
         }
     } else {
         document.getElementById('recommendedShot').textContent = '-';
@@ -1092,7 +1249,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('createLobbyBtn').addEventListener('click', createLobby);
     document.getElementById('joinLobbyBtn').addEventListener('click', joinLobby);
     document.getElementById('leaveLobbyBtn').addEventListener('click', leaveLobby);
-    document.getElementById('copyCodeBtn').addEventListener('click', () => {
+    
+    // Copy lobby code
+    document.getElementById('copyLobbyCode').addEventListener('click', () => {
         const code = document.getElementById('lobbyCodeDisplay').textContent;
         navigator.clipboard.writeText(code).then(() => {
             showNotification('Code kopiert!', 'success');
@@ -1108,10 +1267,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('readyBtn').addEventListener('click', setPlayerReady);
     
     // Game buttons
+    document.getElementById('surrenderBtn')?.addEventListener('click', surrenderGame);
     document.getElementById('newGameBtn').addEventListener('click', () => {
         leaveLobby();
         location.reload();
     });
+    
+    // Volume control
+    document.getElementById('volumeSlider')?.addEventListener('input', (e) => {
+        updateVolume(e.target.value);
+    });
+    
+    // Initialize audio
+    initializeAudio();
     
     // Initialize connection status
     updateConnectionStatus(false);
