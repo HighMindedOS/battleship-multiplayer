@@ -190,7 +190,55 @@ function createLobby() {
         currentTurn: null,
         winner: null
     };
+    
+    function joinLobby() {
+    // Minimal-Implementierung, die du nach Bedarf anpassen solltest
+    const playerName = document.getElementById('joinPlayerName')?.value.trim();
+    const lobbyCode = document.getElementById('lobbyCode')?.value.trim().toUpperCase();
 
+    if (!playerName || !lobbyCode) {
+        showNotification('Bitte fülle alle Felder aus!', 'error');
+        return;
+    }
+
+    gameState.playerName = playerName;
+    gameState.playerId = Date.now().toString();
+    gameState.lobbyId = lobbyCode;
+    gameState.isHost = false;
+
+    // Check if lobby exists
+    gameState.lobbyRef = database.ref(`lobbies/${gameState.lobbyId}`);
+
+    gameState.lobbyRef.once('value').then(snapshot => {
+        if (!snapshot.exists()) {
+            showNotification('Lobby nicht gefunden!', 'error');
+            return;
+        }
+
+        const lobbyData = snapshot.val();
+        const playerCount = Object.keys(lobbyData.players).length;
+
+        if (playerCount >= 2) {
+            showNotification('Lobby ist voll!', 'error');
+            return;
+        }
+
+        // Join lobby
+        gameState.lobbyRef.child(`players/${gameState.playerId}`).set({
+            name: playerName,
+            ready: false,
+            board: null,
+            shots: []
+        }).then(() => {
+            setupLobbyListeners();
+            showScreen('waiting');
+            document.getElementById('lobbyCodeDisplay').textContent = gameState.lobbyId;
+            showNotification('Lobby beigetreten!', 'success');
+        });
+    }).catch(error => {
+        showNotification('Fehler beim Beitreten: ' + error.message, 'error');
+    });
+}
     gameState.lobbyRef.set(lobbyData).then(() => {
         setupLobbyListeners();
         showScreen('waiting');
