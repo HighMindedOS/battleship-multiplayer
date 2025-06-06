@@ -51,8 +51,9 @@ const gameState = {
     hits: 0,
     sunkShips: 0,
     
-    // Initialize game state - keep track of enemy sunk ships
+    // Track enemy sunk ships
     enemySunkShips: {},
+    
     // Cheats - Always Active
     probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
     bestShot: null
