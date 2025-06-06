@@ -71,12 +71,42 @@ const gameState = {
     // Audio
     volume: 0.5,
     sounds: {
-        hit: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQ'),
-        miss: new Audio('data:audio/wav;base64,UklGRvIEAABXQVZFZm10IBAAAAABAAEAQ'),
-        sunk: new Audio('data:audio/wav;base64,UklGRgYGAABXQVZFZm10IBAAAAABAAEAQ'),
-        turn: new Audio('data:audio/wav;base64,UklGRjIFAABXQVZFZm10IBAAAAABAAEAQ')
-    }
+    hit: new Audio('sounds/hit.mp3'),
+    miss: new Audio('sounds/miss.mp3'),
+    sunk: new Audio('sounds/sunk.mp3'),
+    turn: new Audio('sounds/turn.mp3')
+}
+
+
+function preloadSounds() {
+    Object.values(gameState.sounds).forEach(sound => {
+        sound.load();
+    });
+}
 };
+
+// HINZUFÜGEN nach dem gameState Objekt:
+function initializeSounds() {
+    const soundFiles = {
+        hit: 'sounds/hit.mp3',
+        miss: 'sounds/miss.mp3',
+        sunk: 'sounds/sunk.mp3',
+        turn: 'sounds/turn.mp3'
+    };
+    
+    gameState.sounds = {};
+    
+    for (const [key, path] of Object.entries(soundFiles)) {
+        const audio = new Audio(path);
+        audio.volume = gameState.volume;
+        
+        audio.onerror = () => {
+            console.warn(`Sound file not found: ${path}`);
+        };
+        
+        gameState.sounds[key] = audio;
+    }
+}
 
 // DOM Elements
 const screens = {
@@ -97,10 +127,13 @@ function initializeAudio() {
 
 function playSound(soundName) {
     const sound = gameState.sounds[soundName];
-    if (sound) {
+    if (sound && sound.readyState >= 2) {
         sound.currentTime = 0;
         sound.volume = gameState.volume;
-        sound.play().catch(e => console.log('Sound play failed:', e));
+        
+        const clone = sound.cloneNode();
+        clone.volume = gameState.volume;
+        clone.play().catch(e => console.log('Sound play failed:', e));
     }
 }
 
@@ -1201,6 +1234,10 @@ function findBestShot() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    initializeSounds();  // NEU hinzufügen
+    preloadSounds();     // NEU hinzufügen
+    
+    // Rest des bestehenden Codes...
     // Lobby buttons
     document.getElementById('createLobbyBtn').addEventListener('click', createLobby);
     document.getElementById('joinLobbyBtn').addEventListener('click', joinLobby);

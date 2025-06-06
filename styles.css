@@ -13,9 +13,10 @@
     --glass-bg: rgba(10, 14, 39, 0.85);
     --glass-border: rgba(0, 255, 65, 0.3);
     --board-size: min(90vh, 700px);
-    --cell-size: 45px;
+    --cell-size: 40px;
     --grid-bg: rgba(0, 20, 40, 0.5);
     --border-thickness: 15px;
+
 }
 
 /* Base Styles */
@@ -116,6 +117,7 @@ body.in-game.flash-success {
     justify-content: center;
     border-radius: 20px;
     overflow: hidden;
+    padding: 20px; /* NEU hinzufügen */
 }
 
 /* Connection Status */
@@ -463,12 +465,13 @@ body.in-game.flash-success {
 
 .game-layout {
     display: grid;
-    grid-template-columns: 300px 1fr 300px;
-    gap: 30px;
+    grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px); /* ÄNDERN */
+    gap: 20px; /* ÄNDERN: war 30px */
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
-    height: 100%;
+    height: calc(100vh - 2 * var(--border-thickness) - 40px); /* ÄNDERN */
+    padding: 0 20px; /* NEU */
 }
 
 .game-sidebar {
@@ -646,16 +649,16 @@ body.in-game.flash-success {
     font-weight: bold;
 }
 
-/* Game Grid */
 .game-grid {
     display: grid;
-    grid-template-columns: repeat(11, 1fr);
+    grid-template-columns: repeat(11, var(--cell-size)); /* ÄNDERN */
+    grid-template-rows: repeat(11, var(--cell-size)); /* NEU */
     gap: 2px;
     background: var(--grid-bg);
     padding: 10px;
     border: 2px solid var(--border-color);
     border-radius: 10px;
-    width: fit-content;
+    width: auto; /* ÄNDERN: war fit-content */
     margin: 0 auto;
 }
 
@@ -674,7 +677,8 @@ body.in-game.flash-success {
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    font-size: 18px;
+    font-size: 14px; /* ÄNDERN: war 18px */
+    overflow: hidden; /* NEU */
 }
 
 .grid-header {
@@ -842,4 +846,32 @@ button:hover {
 
 .secondary-btn:hover {
     background: rgba(255, 68, 68, 0.1);
+}
+/* HINZUFÜGEN am Ende der Datei (nach Zeile ~830) */
+@media (max-width: 1400px) {
+    :root {
+        --cell-size: 35px;
+    }
+    
+    .game-layout {
+        grid-template-columns: minmax(200px, 250px) 1fr minmax(200px, 250px);
+    }
+}
+
+@media (max-width: 1200px) {
+    .boards-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .game-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+    }
+    
+    .game-sidebar {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+    }
 }
