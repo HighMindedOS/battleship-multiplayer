@@ -4,7 +4,7 @@ const firebaseConfig = {
   authDomain: "realtime-database-aktivieren.firebaseapp.com",
   databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "realtime-database-aktivieren",
-  storageBucket: "realtime-database-aktivieren.firebasestorage.app",
+  storageBucket: "realtime-database-aktivieren.appspot.com",
   messagingSenderId: "921607081725",
   appId: "1:921607081725:web:7630f400a518ab9507f894",
   measurementId: "G-TKN9TP77G3"
