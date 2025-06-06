@@ -202,8 +202,7 @@ function createLobby() {
 }
 
 // ... Füge alle weiteren Funktionen deines Spiels hier ein ...
-function joinLobby() {
-    // Minimal-Implementierung, die du nach Bedarf anpassen solltest
+ffunction joinLobby() {
     const playerName = document.getElementById('joinPlayerName')?.value.trim();
     const lobbyCode = document.getElementById('lobbyCode')?.value.trim().toUpperCase();
 
