@@ -18,6 +18,20 @@ const database = firebase.database();
 console.log('Firebase initialized:', firebase.apps.length > 0);
 
 // Test database connection immediately
+function updateConnectionStatus(connected) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-text');
+    if (statusDot && statusText) {
+        if (connected) {
+            statusDot.classList.add('connected');
+            statusText.textContent = 'Verbunden';
+        } else {
+            statusDot.classList.remove('connected');
+            statusText.textContent = 'Offline';
+        }
+    }
+}
+
 database.ref('.info/connected').on('value', (snapshot) => {
     console.log('Firebase connection status:', snapshot.val());
     updateConnectionStatus(snapshot.val() === true);
@@ -116,7 +130,9 @@ function generateLobbyCode() {
 
 function showScreen(screenName) {
     Object.keys(screens).forEach(name => {
-        screens[name].classList.toggle('active', name === screenName);
+        if (screens[name]) {
+            screens[name].classList.toggle('active', name === screenName);
+        }
     });
     gameState.currentScreen = screenName;
 
@@ -129,45 +145,73 @@ function showScreen(screenName) {
 
 function showNotification(message, type = 'info') {
     const notifications = document.getElementById('notifications');
+    if (!notifications) return;
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.textContent = message;
-
     notifications.appendChild(notification);
-
     setTimeout(() => {
         notification.style.opacity = '0';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
 
-function updateConnectionStatus(connected) {
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-text');
+// Die restlichen Spielfunktionen (createGrid, Lobby, Placement, Game, usw.)
+// --- AB HIER DEIN BISHERIGER CODE, OHNE EIN WEITERES gameState-Objekt! ---
 
-    if (connected) {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Verbunden';
-    } else {
-        statusDot.classList.remove('connected');
-        statusText.textContent = 'Offline';
+// Beispiel: createLobby (und so weiter)
+function createLobby() {
+    const playerName = document.getElementById('playerName').value.trim();
+    if (!playerName) {
+        showNotification('Bitte gib einen Namen ein!', 'error');
+        return;
     }
+
+    gameState.playerName = playerName;
+    gameState.playerId = Date.now().toString();
+    gameState.lobbyId = generateLobbyCode();
+    gameState.isHost = true;
+
+    // Create lobby in Firebase
+    gameState.lobbyRef = database.ref(`lobbies/${gameState.lobbyId}`);
+
+    const lobbyData = {
+        created: firebase.database.ServerValue.TIMESTAMP,
+        host: gameState.playerId,
+        players: {
+            [gameState.playerId]: {
+                name: playerName,
+                ready: false,
+                board: null,
+                shots: []
+            }
+        },
+        gameState: 'waiting',
+        currentTurn: null,
+        winner: null
+    };
+
+    gameState.lobbyRef.set(lobbyData).then(() => {
+        setupLobbyListeners();
+        showScreen('waiting');
+        document.getElementById('lobbyCodeDisplay').textContent = gameState.lobbyId;
+        showNotification('Lobby erstellt! Teile den Code mit deinem Gegner.', 'success');
+    }).catch(error => {
+        showNotification('Fehler beim Erstellen der Lobby: ' + error.message, 'error');
+    });
 }
 
-// ... (Der Rest des Codes bleibt unverändert – siehe deinen ursprünglichen Stand!)
-
-// Füge ab hier einfach deinen weiteren Code an, z.B. createGrid, Lobby-Logik, Placement, Spiel-Logik usw.
-// Achte darauf, dass du kein weiteres gameState-Objekt mehr anlegst und dass die Sounds wirklich nur einmal im Objekt stehen!
+// ... Füge alle weiteren Funktionen deines Spiels hier ein ...
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Lobby buttons
-    document.getElementById('createLobbyBtn').addEventListener('click', createLobby);
-    document.getElementById('joinLobbyBtn').addEventListener('click', joinLobby);
-    document.getElementById('leaveLobbyBtn').addEventListener('click', leaveLobby);
+    document.getElementById('createLobbyBtn')?.addEventListener('click', createLobby);
+    document.getElementById('joinLobbyBtn')?.addEventListener('click', joinLobby);
+    document.getElementById('leaveLobbyBtn')?.addEventListener('click', leaveLobby);
 
     // Copy lobby code
-    document.getElementById('copyLobbyCode').addEventListener('click', () => {
+    document.getElementById('copyLobbyCode')?.addEventListener('click', () => {
         const code = document.getElementById('lobbyCodeDisplay').textContent;
         navigator.clipboard.writeText(code).then(() => {
             showNotification('Code kopiert!', 'success');
@@ -177,14 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Placement buttons
-    document.getElementById('randomPlaceBtn').addEventListener('click', randomPlacement);
-    document.getElementById('clearBoardBtn').addEventListener('click', clearBoard);
-    document.getElementById('rotateBtn').addEventListener('click', rotateShip);
-    document.getElementById('readyBtn').addEventListener('click', setPlayerReady);
+    document.getElementById('randomPlaceBtn')?.addEventListener('click', randomPlacement);
+    document.getElementById('clearBoardBtn')?.addEventListener('click', clearBoard);
+    document.getElementById('rotateBtn')?.addEventListener('click', rotateShip);
+    document.getElementById('readyBtn')?.addEventListener('click', setPlayerReady);
 
     // Game buttons
     document.getElementById('surrenderBtn')?.addEventListener('click', surrenderGame);
-    document.getElementById('newGameBtn').addEventListener('click', () => {
+    document.getElementById('newGameBtn')?.addEventListener('click', () => {
         leaveLobby();
         location.reload();
     });
