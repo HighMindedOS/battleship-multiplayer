@@ -51,6 +51,8 @@ const gameState = {
     hits: 0,
     sunkShips: 0,
     
+    // Initialize game state - keep track of enemy sunk ships
+    enemySunkShips: {},
     // Cheats - Always Active
     probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
     bestShot: null
@@ -654,12 +656,20 @@ function updateTurnIndicator() {
         enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
         updateRecommendation(); // Update recommendation when it's player's turn
+        
+        // Update body border for player turn
+        document.body.classList.add('player-turn');
+        document.body.classList.remove('enemy-turn');
     } else {
         turnIndicator.textContent = 'Gegner ist dran...';
         turnIndicator.style.color = 'var(--text-secondary)';
         enemyGrid.classList.remove('active');
         enemyGrid.classList.add('disabled');
         enableEnemyGrid(false);
+        
+        // Update body border for enemy turn
+        document.body.classList.add('enemy-turn');
+        document.body.classList.remove('player-turn');
     }
 }
 
@@ -730,6 +740,41 @@ function handleShotResult(result) {
         gameState.hits++;
         addToGameLog(`Treffer auf ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
         
+        // Flash green border on hit
+        document.body.classList.add('flash-success');
+        setTimeout(() => document.body.classList.remove('flash-success'), 1000);
+        
+        if (isSunk) {
+            gameState.sunkShips++;
+            addToGameLog(`${shipType} versenkt!`, 'sunk');
+            markShipAsSunk(result.shipPositions, true);
+            
+            // Track which enemy ship was sunk
+            if (!gameState.enemySunkShips[shipType]) {
+                gameState.enemySunkShips[shipType] = true;
+            }
+            
+            updateShipStatus(); // Update enemy ship status
+            
+            // Check for victory
+            checkVictory();
+        }
+        
+        // IMPORTANT: Player gets another turn after a hit!
+        gameState.canShootAgain = true;
+        enableEnemyGrid(true);
+        showNotification('Treffer! Du darfst nochmal schießen!', 'success');
+        updateRecommendation(); // Update recommendation for next shot
+    } else {
+        addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
+        gameState.canShootAgain = false;
+        // Switch turns only on miss
+        switchTurn();
+    }
+    
+    updateStats();
+}(`Treffer auf ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
+        
         if (isSunk) {
             gameState.sunkShips++;
             addToGameLog(`${shipType} versenkt!`, 'sunk');
@@ -774,6 +819,10 @@ function handleIncomingShot(shot) {
         gameState.myBoard[row][col] = 'hit';
         cell.classList.add('hit');
         result.isHit = true;
+        
+        // Flash red border when hit
+        document.body.classList.add('flash-hit');
+        setTimeout(() => document.body.classList.remove('flash-hit'), 1000);
         
         // Check if ship is sunk
         const sunkShip = checkShipSunk(row, col);
@@ -855,7 +904,7 @@ function updateStats() {
 }
 
 function updateShipStatus() {
-    // Update player ships
+    // Update player ships in left sidebar
     const playerShipsContainer = document.getElementById('playerShipsStatus');
     if (playerShipsContainer) {
         playerShipsContainer.innerHTML = '';
@@ -868,14 +917,15 @@ function updateShipStatus() {
         });
     }
     
-    // Update enemy ships (when known)
+    // Update enemy ships in right sidebar
     const enemyShipsContainer = document.getElementById('enemyShipsStatus');
     if (enemyShipsContainer) {
         enemyShipsContainer.innerHTML = '';
         
-        gameState.shipTypes.forEach(shipType => {
+        gameState.shipTypes.forEach((shipType) => {
             const shipElement = document.createElement('div');
-            shipElement.className = 'ship-status-item';
+            const isSunk = gameState.enemySunkShips[shipType.name] || false;
+            shipElement.className = `ship-status-item enemy-ship-item ${isSunk ? 'sunk' : ''}`;
             shipElement.innerHTML = `${shipType.name} (${shipType.size})`;
             enemyShipsContainer.appendChild(shipElement);
         });
@@ -897,6 +947,10 @@ function handleGameOver() {
     gameState.lobbyRef.child('winner').once('value').then(snapshot => {
         const winnerId = snapshot.val();
         const isWinner = winnerId === gameState.playerId;
+        
+        // Update body border for victory
+        document.body.classList.remove('player-turn', 'enemy-turn');
+        document.body.classList.add('victory');
         
         document.getElementById('winnerIcon').textContent = isWinner ? '🏆' : '😢';
         document.getElementById('winnerText').textContent = isWinner ? 'Du hast gewonnen!' : 'Du hast verloren!';

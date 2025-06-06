@@ -88,6 +88,8 @@
             <div class="game-layout">
                 <!-- Left: Game Log -->
                 <div class="game-sidebar left">
+                    <div class="ships-status-header">Deine Schiffe</div>
+                    <div id="playerShipsStatus" class="ships-display"></div>
                     <h3>Spielverlauf</h3>
                     <div id="gameLog" class="game-log"></div>
                 </div>
@@ -102,19 +104,19 @@
                         <div class="board-section">
                             <h3>Dein Feld</h3>
                             <div id="playerGrid" class="game-grid"></div>
-                            <div id="playerShipsStatus" class="ships-status"></div>
                         </div>
                         
                         <div class="board-section">
                             <h3>Gegner</h3>
                             <div id="enemyGrid" class="game-grid enemy-board"></div>
-                            <div id="enemyShipsStatus" class="ships-status"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Right: Stats & Cheats -->
                 <div class="game-sidebar right">
+                    <div class="ships-status-header enemy-ships-header">Gegner Schiffe</div>
+                    <div id="enemyShipsStatus" class="ships-display"></div>
                     <h3>Statistik</h3>
                     <div class="stats">
                         <div class="stat-item">

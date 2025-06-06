@@ -11,7 +11,9 @@
     --border-color: #00ff41;
     --glass-bg: rgba(10, 14, 39, 0.85);
     --glass-border: rgba(0, 255, 65, 0.3);
-    --board-size: min(80vh, 600px);
+    --board-size: min(90vh, 700px);
+    --cell-size: 45px;
+    --grid-bg: rgba(0, 20, 40, 0.5);
 }
 
 /* Base Styles */
@@ -27,6 +29,39 @@ body {
     color: var(--text-primary);
     overflow-x: hidden;
     position: relative;
+    border: 6px solid white;
+    min-height: 100vh;
+    transition: border-color 0.3s ease;
+}
+
+body.player-turn {
+    border-color: var(--primary-color);
+}
+
+body.enemy-turn {
+    border-color: var(--danger-color);
+}
+
+body.victory {
+    border-color: var(--warning-color);
+}
+
+@keyframes flash-red {
+    0%, 100% { border-color: inherit; }
+    50% { border-color: var(--danger-color); }
+}
+
+@keyframes flash-green {
+    0%, 100% { border-color: inherit; }
+    50% { border-color: var(--primary-color); }
+}
+
+body.flash-hit {
+    animation: flash-red 0.5s ease 2;
+}
+
+body.flash-success {
+    animation: flash-green 0.5s ease 2;
 }
 
 /* Video Background */
@@ -59,6 +94,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+    padding: 20px;
 }
 
 /* Connection Status */
@@ -354,17 +390,60 @@ body {
     padding: 20px;
 }
 
+.game-sidebar.right {
+    border-color: var(--danger-color);
+}
+
 .game-sidebar h3 {
     color: var(--primary-color);
     margin-bottom: 15px;
 }
 
+.game-sidebar.right h3 {
+    color: var(--danger-color);
+}
+
+/* Ships Status - Integrated into sidebars */
+.ships-status-header {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.enemy-ships-header {
+    color: var(--danger-color);
+}
+
+.ship-status-item {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 2px;
+    background: rgba(0, 255, 65, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.enemy-ship-item {
+    background: rgba(255, 68, 68, 0.1);
+    border-color: var(--danger-color);
+}
+
+.ship-status-item.sunk {
+    background: rgba(100, 100, 100, 0.2);
+    border-color: transparent;
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
 .game-log {
-    height: 400px;
+    height: 350px;
     overflow-y: auto;
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
+    margin-top: 10px;
 }
 
 .log-entry {
@@ -406,12 +485,16 @@ body {
     color: var(--primary-color);
 }
 
+.board-section:last-child h3 {
+    color: var(--danger-color);
+}
+
 .enemy-board {
     position: relative;
 }
 
 .enemy-board.active {
-    box-shadow: 0 0 0 3px var(--primary-color);
+    box-shadow: 0 0 0 3px var(--danger-color);
 }
 
 .enemy-board.disabled {
@@ -423,7 +506,7 @@ body {
     background: rgba(0, 0, 0, 0.3);
     padding: 15px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin: 20px 0;
 }
 
 .stat-item {
@@ -450,12 +533,12 @@ body {
     font-weight: bold;
 }
 
-/* Game Grid */
+/* Game Grid - Larger size */
 .game-grid {
     display: grid;
     grid-template-columns: repeat(11, 1fr);
     gap: 2px;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--grid-bg);
     padding: 10px;
     border: 2px solid var(--border-color);
     border-radius: 10px;
@@ -463,17 +546,22 @@ body {
     margin: 0 auto;
 }
 
+#enemyGrid {
+    border-color: var(--danger-color);
+}
+
 .grid-cell {
-    width: 35px;
-    height: 35px;
-    background: rgba(0, 50, 100, 0.3);
-    border: 1px solid rgba(0, 150, 255, 0.3);
+    width: var(--cell-size);
+    height: var(--cell-size);
+    background: rgba(0, 20, 40, 0.3);
+    border: 1px solid rgba(0, 100, 150, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
+    font-size: 18px;
 }
 
 .grid-header {
@@ -500,6 +588,7 @@ body {
 .grid-cell.hit::after {
     content: '💥';
     position: absolute;
+    font-size: 24px;
 }
 
 .grid-cell.miss {
@@ -509,7 +598,7 @@ body {
 .grid-cell.miss::after {
     content: '•';
     color: white;
-    font-size: 20px;
+    font-size: 24px;
 }
 
 .grid-cell.sunk {
@@ -542,25 +631,10 @@ body {
     100% { box-shadow: 0 0 5px var(--primary-color); }
 }
 
-/* Ships Status */
+/* Ships Status (below game boards) */
 .ships-status {
     margin-top: 15px;
-}
-
-.ship-status-item {
-    display: inline-block;
-    padding: 5px 10px;
-    margin: 2px;
-    background: rgba(0, 255, 65, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    font-size: 14px;
-}
-
-.ship-status-item.sunk {
-    background: rgba(255, 0, 0, 0.2);
-    border-color: var(--danger-color);
-    text-decoration: line-through;
+    display: none; /* Hidden as requested - now integrated in sidebars */
 }
 
 /* Game Over */
