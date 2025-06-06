@@ -31,6 +31,8 @@ body {
     position: relative;
     border: 6px solid white;
     min-height: 100vh;
+    margin: 0;
+    box-sizing: border-box;
     transition: border-color 0.3s ease;
 }
 
@@ -553,8 +555,8 @@ body.flash-success {
 .grid-cell {
     width: var(--cell-size);
     height: var(--cell-size);
-    background: rgba(0, 20, 40, 0.3);
-    border: 1px solid rgba(0, 100, 150, 0.3);
+    background: rgba(0, 50, 100, 0.3);
+    border: 1px solid rgba(0, 150, 255, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -695,8 +697,8 @@ body.flash-success {
 }
 
 .notification.info {
-    background: rgba(0, 150, 255, 0.2);
-    border-color: #0096ff;
+    background: rgba(0, 255, 65, 0.2);
+    border-color: var(--primary-color);
 }
 
 .notification.success {

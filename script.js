@@ -14,6 +14,15 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+// Debug Firebase connection
+console.log('Firebase initialized:', firebase.apps.length > 0);
+
+// Test database connection immediately
+database.ref('.info/connected').on('value', (snapshot) => {
+    console.log('Firebase connection status:', snapshot.val());
+    updateConnectionStatus(snapshot.val() === true);
+});
+
 // Game State
 const gameState = {
     currentScreen: 'lobby',
@@ -1131,10 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize connection status
     updateConnectionStatus(false);
     
-    // Check Firebase connection
-    database.ref('.info/connected').on('value', snapshot => {
-        updateConnectionStatus(snapshot.val() === true);
-    });
+    // Remove duplicate Firebase connection check since we already have it at the top
     
     // Handle page unload
     window.addEventListener('beforeunload', () => {
