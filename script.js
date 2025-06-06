@@ -68,22 +68,21 @@ const gameState = {
     probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
     bestShot: null,
     
-    // Audio
-    volume: 0.5,
-    sounds: {
+// Audio
+volume: 0.5,
+sounds: {
     hit: new Audio('sounds/hit.mp3'),
     miss: new Audio('sounds/miss.mp3'),
     sunk: new Audio('sounds/sunk.mp3'),
     turn: new Audio('sounds/turn.mp3')
-}
-
+} // KEIN Komma, weil dies die letzte Eigenschaft ist
+}; // Hier wird das Objekt gameState korrekt beendet
 
 function preloadSounds() {
     Object.values(gameState.sounds).forEach(sound => {
         sound.load();
     });
 }
-};
 
 // HINZUFÜGEN nach dem gameState Objekt:
 function initializeSounds() {
