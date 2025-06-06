@@ -33,7 +33,7 @@ const gameState = {
     isHost: false,
     gamePhase: 'waiting',
     currentTurn: null,
-    canShootAgain: false, // New: Track if player can shoot again after hit
+    canShootAgain: false,
     
     // Ship Configuration
     shipTypes: [
@@ -665,7 +665,7 @@ function updateTurnIndicator() {
         enemyGrid.classList.add('active');
         enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
-        updateRecommendation(); // Update recommendation when it's player's turn
+        updateRecommendation();
         
         // Update body border for player turn
         document.body.classList.add('player-turn');
@@ -764,7 +764,7 @@ function handleShotResult(result) {
                 gameState.enemySunkShips[shipType] = true;
             }
             
-            updateShipStatus(); // Update enemy ship status
+            updateShipStatus();
             
             // Check for victory
             checkVictory();
@@ -774,31 +774,7 @@ function handleShotResult(result) {
         gameState.canShootAgain = true;
         enableEnemyGrid(true);
         showNotification('Treffer! Du darfst nochmal schießen!', 'success');
-        updateRecommendation(); // Update recommendation for next shot
-    } else {
-        addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
-        gameState.canShootAgain = false;
-        // Switch turns only on miss
-        switchTurn();
-    }
-    
-    updateStats();
-}(`Treffer auf ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
-        
-        if (isSunk) {
-            gameState.sunkShips++;
-            addToGameLog(`${shipType} versenkt!`, 'sunk');
-            markShipAsSunk(result.shipPositions, true);
-            
-            // Check for victory
-            checkVictory();
-        }
-        
-        // IMPORTANT: Player gets another turn after a hit!
-        gameState.canShootAgain = true;
-        enableEnemyGrid(true);
-        showNotification('Treffer! Du darfst nochmal schießen!', 'success');
-        updateRecommendation(); // Update recommendation for next shot
+        updateRecommendation();
     } else {
         addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
         gameState.canShootAgain = false;
