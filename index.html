@@ -4,191 +4,158 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Battleship Multiplayer</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>⚓ Battleship Multiplayer ⚓</h1>
-            <div class="connection-status" id="connectionStatus">
-                <span class="status-dot"></span>
-                <span class="status-text">Offline</span>
-            </div>
-        </header>
+    <!-- Video Background -->
+    <video autoplay muted loop id="bgVideo">
+        <source src="background.mp4" type="video/mp4">
+    </video>
+    <div class="glass-overlay"></div>
 
-        <main class="main-content">
-            <!-- Lobby Screen -->
-            <div id="lobbyScreen" class="screen active">
-                <div class="lobby-container">
-                    <h2>Willkommen bei Battleship!</h2>
-                    <div class="lobby-options">
-                        <div class="option-card">
-                            <h3>Neues Spiel erstellen</h3>
-                            <input type="text" id="playerName" placeholder="Dein Name" maxlength="20">
-                            <button id="createLobbyBtn" class="btn btn-primary">
-                                <span class="icon">🎮</span> Lobby erstellen
-                            </button>
-                        </div>
-                        
-                        <div class="divider">ODER</div>
-                        
-                        <div class="option-card">
-                            <h3>Einem Spiel beitreten</h3>
-                            <input type="text" id="joinPlayerName" placeholder="Dein Name" maxlength="20">
-                            <input type="text" id="lobbyCode" placeholder="Lobby-Code eingeben" maxlength="6">
-                            <button id="joinLobbyBtn" class="btn btn-secondary">
-                                <span class="icon">🔗</span> Beitreten
-                            </button>
+    <!-- Game Container -->
+    <div class="game-container">
+        <!-- Connection Status -->
+        <div class="connection-status">
+            <span class="status-dot"></span>
+            <span class="status-text">Offline</span>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobbyScreen" class="screen active">
+            <h1 class="game-title">Battleship Multiplayer</h1>
+            
+            <div class="lobby-sections">
+                <!-- Create Game -->
+                <div class="lobby-card">
+                    <h2>🔗 Neues Spiel erstellen</h2>
+                    <input type="text" id="playerName" placeholder="Dein Name" maxlength="20">
+                    <button id="createLobbyBtn">Lobby erstellen</button>
+                </div>
+
+                <!-- Join Game -->
+                <div class="lobby-card">
+                    <h2>🔌 Einem Spiel beitreten</h2>
+                    <input type="text" id="joinPlayerName" placeholder="Dein Name" maxlength="20">
+                    <input type="text" id="lobbyCode" placeholder="Lobby Code" maxlength="6">
+                    <button id="joinLobbyBtn">Beitreten</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Screen -->
+        <div id="waitingScreen" class="screen">
+            <div class="waiting-content">
+                <h2>Lobby Code: <span id="lobbyCodeDisplay"></span></h2>
+                <button id="copyCodeBtn" class="icon-btn">📋</button>
+                
+                <div class="players-list" id="playersList">
+                    <!-- Players will be added dynamically -->
+                </div>
+                
+                <button id="leaveLobbyBtn" class="secondary-btn">Lobby verlassen</button>
+            </div>
+        </div>
+
+        <!-- Ship Placement Screen -->
+        <div id="placementScreen" class="screen">
+            <div class="placement-container">
+                <div class="placement-left">
+                    <h3>Verfügbare Schiffe</h3>
+                    <div id="availableShips" class="available-ships">
+                        <!-- Ships will be added dynamically -->
+                    </div>
+                    
+                    <div class="placement-controls">
+                        <button id="rotateBtn" class="control-btn">[R] Rotieren</button>
+                        <div class="placement-actions">
+                            <button id="randomPlaceBtn" class="icon-only-btn" title="Zufällig platzieren">🎲</button>
+                            <button id="clearBoardBtn" class="icon-only-btn" title="Grid leeren">🗑️</button>
+                            <button id="readyBtn" class="ready-btn" disabled>Ready</button>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Waiting Screen -->
-            <div id="waitingScreen" class="screen">
-                <div class="waiting-container">
-                    <h2>Lobby wartet auf Spieler...</h2>
-                    <div class="lobby-info">
-                        <div class="lobby-code-display">
-                            <p>Lobby-Code:</p>
-                            <h3 id="lobbyCodeDisplay">------</h3>
-                            <button id="copyCodeBtn" class="btn btn-small">📋 Kopieren</button>
-                        </div>
-                        
-                        <div class="players-list">
-                            <h4>Spieler:</h4>
-                            <div id="playersList">
-                                <div class="player-item">
-                                    <span class="player-icon">👤</span>
-                                    <span class="player-name">Warte auf Spieler 1...</span>
-                                </div>
-                                <div class="player-item">
-                                    <span class="player-icon">👤</span>
-                                    <span class="player-name">Warte auf Spieler 2...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <button id="leaveLobbyBtn" class="btn btn-danger">Lobby verlassen</button>
-                </div>
-            </div>
-
-            <!-- Ship Placement Screen -->
-            <div id="placementScreen" class="screen">
-                <div class="placement-container">
+                
+                <div class="placement-center">
                     <h2>Platziere deine Schiffe</h2>
-                    
-                    <div class="placement-layout">
-                        <div class="ships-panel">
-                            <h3>Verfügbare Schiffe</h3>
-                            <div id="availableShips" class="ships-list">
-                                <!-- Ships will be generated by JS -->
-                            </div>
-                            <button id="randomPlaceBtn" class="btn btn-secondary">
-                                <span class="icon">🎲</span> Zufällig platzieren
-                            </button>
-                            <button id="clearBoardBtn" class="btn btn-danger">
-                                <span class="icon">🗑️</span> Brett leeren
-                            </button>
-                            <button id="rotateBtn" class="btn btn-secondary">
-                                <span class="icon">🔄</span> Rotieren (R)
-                            </button>
-                        </div>
-                        
-                        <div class="board-panel">
-                            <div class="grid-container">
-                                <div id="placementGrid" class="game-grid placement-grid"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-panel">
-                            <h3>Anleitung</h3>
-                            <ul class="instructions">
-                                <li>Wähle ein Schiff aus der Liste</li>
-                                <li>Klicke auf das Spielfeld zum Platzieren</li>
-                                <li>Drücke R zum Rotieren</li>
-                                <li>Alle Schiffe müssen platziert werden</li>
-                            </ul>
-                            <button id="readyBtn" class="btn btn-success" disabled>
-                                <span class="icon">✅</span> Bereit!
-                            </button>
-                        </div>
-                    </div>
+                    <div id="placementGrid" class="game-grid"></div>
                 </div>
             </div>
+        </div>
 
-            <!-- Game Screen -->
-            <div id="gameScreen" class="screen">
-                <div class="game-container">
-                    <div class="game-header">
-                        <div class="player-info">
-                            <span id="currentPlayer">Du bist dran!</span>
-                        </div>
-                        <div class="game-stats">
-                            <span>Schüsse: <strong id="shotCount">0</strong></span>
-                            <span>Treffer: <strong id="hitCount">0</strong></span>
-                            <span>Versenkt: <strong id="sunkCount">0</strong></span>
-                        </div>
-                        <button id="cheatsBtn" class="btn btn-cheat">
-                            <span class="icon">🎯</span> Cheats
-                        </button>
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-layout">
+                <!-- Left: Game Log -->
+                <div class="game-sidebar left">
+                    <h3>Spielverlauf</h3>
+                    <div id="gameLog" class="game-log"></div>
+                </div>
+
+                <!-- Center: Game Boards -->
+                <div class="game-center">
+                    <div class="turn-indicator">
+                        <span id="currentPlayer">Warte auf Start...</span>
                     </div>
                     
-                    <div class="game-boards">
+                    <div class="boards-container">
                         <div class="board-section">
-                            <h3>Dein Spielfeld</h3>
-                            <div class="grid-container">
-                                <div id="playerGrid" class="game-grid"></div>
-                            </div>
-                            <div class="ships-status" id="playerShipsStatus"></div>
+                            <h3>Dein Feld</h3>
+                            <div id="playerGrid" class="game-grid"></div>
+                            <div id="playerShipsStatus" class="ships-status"></div>
                         </div>
-                        
-                        <div class="board-divider"></div>
                         
                         <div class="board-section">
-                            <h3>Gegnerisches Feld</h3>
-                            <div class="grid-container">
-                                <div id="enemyGrid" class="game-grid enemy-grid"></div>
-                            </div>
-                            <div class="ships-status" id="enemyShipsStatus"></div>
+                            <h3>Gegner</h3>
+                            <div id="enemyGrid" class="game-grid enemy-board"></div>
+                            <div id="enemyShipsStatus" class="ships-status"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Stats & Cheats -->
+                <div class="game-sidebar right">
+                    <h3>Statistik</h3>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <span>Schüsse:</span>
+                            <span id="shotCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>Treffer:</span>
+                            <span id="hitCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>Versenkt:</span>
+                            <span id="sunkCount">0</span>
                         </div>
                     </div>
                     
-                    <div class="game-log">
-                        <h4>Spielverlauf</h4>
-                        <div id="gameLog" class="log-content"></div>
+                    <h3 class="cheat-title">Empfehlung</h3>
+                    <div id="cheatDisplay" class="cheat-display">
+                        <div id="recommendedShot">-</div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Game Over Screen -->
-            <div id="gameOverScreen" class="screen">
-                <div class="gameover-container">
-                    <h2 id="gameOverTitle">Spiel beendet!</h2>
-                    <div class="winner-display">
-                        <span class="winner-icon" id="winnerIcon">🏆</span>
-                        <h3 id="winnerText">Gewinner: </h3>
-                    </div>
-                    <div class="game-stats-final">
-                        <h4>Statistiken</h4>
-                        <div id="finalStats"></div>
-                    </div>
-                    <button id="newGameBtn" class="btn btn-primary">Neues Spiel</button>
-                </div>
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen">
+            <div class="gameover-content">
+                <div id="winnerIcon" class="winner-icon"></div>
+                <h1 id="winnerText"></h1>
+                <div id="finalStats" class="final-stats"></div>
+                <button id="newGameBtn">Neues Spiel</button>
             </div>
-        </main>
-
-        <!-- Notifications -->
-        <div id="notifications" class="notifications"></div>
+        </div>
     </div>
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    
-    <!-- Game Script -->
+    <!-- Notifications -->
+    <div id="notifications" class="notifications"></div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <script src="script.js"></script>
-
-
 </body>
 </html>

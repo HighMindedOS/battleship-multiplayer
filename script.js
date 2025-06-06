@@ -1,4 +1,4 @@
-// Firebase Configuration - WICHTIG: Ersetzen Sie diese mit Ihrer eigenen Config aus der Firebase Console!
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
   authDomain: "realtime-database-aktivieren.firebaseapp.com",
@@ -22,8 +22,9 @@ const gameState = {
     lobbyId: null,
     lobbyRef: null,
     isHost: false,
-    gamePhase: 'waiting', // waiting, placing, ready, playing, gameover
+    gamePhase: 'waiting',
     currentTurn: null,
+    canShootAgain: false, // New: Track if player can shoot again after hit
     
     // Ship Configuration
     shipTypes: [
@@ -50,9 +51,9 @@ const gameState = {
     hits: 0,
     sunkShips: 0,
     
-    // Cheats
-    cheatsEnabled: false,
-    probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0))
+    // Cheats - Always Active
+    probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
+    bestShot: null
 };
 
 // DOM Elements
@@ -606,6 +607,9 @@ function initializeGame() {
     
     // Initialize pending shots listener
     initializePendingShotsListener();
+    
+    // Initialize auto-cheat system
+    updateRecommendation();
 }
 
 function setupShotListeners() {
@@ -639,15 +643,22 @@ function updatePlayerBoard() {
 
 function updateTurnIndicator() {
     const turnIndicator = document.getElementById('currentPlayer');
+    const enemyGrid = document.getElementById('enemyGrid');
+    
     if (!turnIndicator) return;
     
     if (gameState.currentTurn === gameState.playerId) {
         turnIndicator.textContent = 'Du bist dran!';
         turnIndicator.style.color = 'var(--secondary-color)';
+        enemyGrid.classList.add('active');
+        enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
+        updateRecommendation(); // Update recommendation when it's player's turn
     } else {
         turnIndicator.textContent = 'Gegner ist dran...';
         turnIndicator.style.color = 'var(--text-secondary)';
+        enemyGrid.classList.remove('active');
+        enemyGrid.classList.add('disabled');
         enableEnemyGrid(false);
     }
 }
@@ -656,7 +667,6 @@ function enableEnemyGrid(enabled) {
     const enemyCells = document.querySelectorAll('#enemyGrid .grid-cell:not(.grid-header)');
     enemyCells.forEach(cell => {
         cell.style.pointerEvents = enabled ? 'auto' : 'none';
-        cell.style.opacity = enabled ? '1' : '0.7';
     });
 }
 
@@ -728,14 +738,20 @@ function handleShotResult(result) {
             // Check for victory
             checkVictory();
         }
+        
+        // IMPORTANT: Player gets another turn after a hit!
+        gameState.canShootAgain = true;
+        enableEnemyGrid(true);
+        showNotification('Treffer! Du darfst nochmal schießen!', 'success');
+        updateRecommendation(); // Update recommendation for next shot
     } else {
         addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
+        gameState.canShootAgain = false;
+        // Switch turns only on miss
+        switchTurn();
     }
     
     updateStats();
-    
-    // Switch turns
-    switchTurn();
 }
 
 function handleIncomingShot(shot) {
@@ -765,6 +781,7 @@ function handleIncomingShot(shot) {
             result.isSunk = true;
             result.shipType = sunkShip.type;
             result.shipPositions = sunkShip.positions;
+            addToGameLog(`Dein ${sunkShip.type} wurde versenkt!`, 'sunk');
         }
         
         addToGameLog(`Gegner trifft ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
@@ -906,18 +923,32 @@ function addToGameLog(message, type) {
     log.scrollTop = log.scrollHeight;
 }
 
-// Cheats (Probability Map)
-function toggleCheats() {
-    gameState.cheatsEnabled = !gameState.cheatsEnabled;
-    
-    if (gameState.cheatsEnabled) {
-        calculateProbabilityMap();
-        showProbabilityMap();
-    } else {
-        hideProbabilityMap();
+// Auto-Recommendation System (Always Active)
+function updateRecommendation() {
+    if (gameState.currentTurn !== gameState.playerId) {
+        document.getElementById('recommendedShot').textContent = '-';
+        return;
     }
     
-    showNotification(`Cheats ${gameState.cheatsEnabled ? 'aktiviert' : 'deaktiviert'}`, 'warning');
+    calculateProbabilityMap();
+    const bestShot = findBestShot();
+    
+    if (bestShot) {
+        const coord = `${String.fromCharCode(65 + bestShot.col)}${bestShot.row + 1}`;
+        document.getElementById('recommendedShot').textContent = coord;
+        
+        // Highlight the recommended cell
+        document.querySelectorAll('.recommended').forEach(cell => {
+            cell.classList.remove('recommended');
+        });
+        
+        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${bestShot.row}"][data-col="${bestShot.col}"]`);
+        if (cell) {
+            cell.classList.add('recommended');
+        }
+    } else {
+        document.getElementById('recommendedShot').textContent = '-';
+    }
 }
 
 function calculateProbabilityMap() {
@@ -926,7 +957,6 @@ function calculateProbabilityMap() {
     
     // For each remaining ship type
     const remainingShips = gameState.shipTypes.filter((_, index) => {
-        // Check which ships are not yet sunk
         return index >= gameState.sunkShips;
     });
     
@@ -950,6 +980,29 @@ function calculateProbabilityMap() {
             }
         }
     });
+    
+    // Increase probability near hits
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            if (gameState.enemyBoard[row][col] === 'hit') {
+                // Check adjacent cells
+                const adjacents = [
+                    { r: row - 1, c: col },
+                    { r: row + 1, c: col },
+                    { r: row, c: col - 1 },
+                    { r: row, c: col + 1 }
+                ];
+                
+                adjacents.forEach(adj => {
+                    if (adj.r >= 0 && adj.r < 10 && adj.c >= 0 && adj.c < 10) {
+                        if (gameState.enemyBoard[adj.r][adj.c] === 'unknown') {
+                            gameState.probabilityMap[adj.r][adj.c] += 50;
+                        }
+                    }
+                });
+            }
+        }
+    }
 }
 
 function canPlaceShipOnEnemyBoard(row, col, size, orientation) {
@@ -977,32 +1030,20 @@ function canPlaceShipOnEnemyBoard(row, col, size, orientation) {
     return true;
 }
 
-function showProbabilityMap() {
-    const maxProbability = Math.max(...gameState.probabilityMap.flat());
+function findBestShot() {
+    let maxProbability = 0;
+    let bestShot = null;
     
     for (let row = 0; row < 10; row++) {
         for (let col = 0; col < 10; col++) {
-            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
-            if (cell && gameState.enemyBoard[row][col] === 'unknown') {
-                const probability = gameState.probabilityMap[row][col];
-                
-                // Show highest probability cells
-                if (probability === maxProbability && maxProbability > 0) {
-                    cell.classList.add('recommended');
-                }
-                
-                // Optional: Show probability as text
-                cell.setAttribute('data-probability', probability);
+            if (gameState.enemyBoard[row][col] === 'unknown' && gameState.probabilityMap[row][col] > maxProbability) {
+                maxProbability = gameState.probabilityMap[row][col];
+                bestShot = { row, col };
             }
         }
     }
-}
-
-function hideProbabilityMap() {
-    document.querySelectorAll('.recommended').forEach(cell => {
-        cell.classList.remove('recommended');
-        cell.removeAttribute('data-probability');
-    });
+    
+    return bestShot;
 }
 
 // Event Listeners
@@ -1027,7 +1068,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('readyBtn').addEventListener('click', setPlayerReady);
     
     // Game buttons
-    document.getElementById('cheatsBtn').addEventListener('click', toggleCheats);
     document.getElementById('newGameBtn').addEventListener('click', () => {
         leaveLobby();
         location.reload();
