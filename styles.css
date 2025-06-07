@@ -5,17 +5,18 @@
     --danger-color: #ff4444;
     --warning-color: #ffaa00;
     --orange-color: #ff8800;
+    --purple-color: #9b59b6;
     --bg-dark: #0a0e27;
     --bg-darker: #050714;
     --text-primary: #ffffff;
     --text-secondary: #a0a0a0;
-    --border-color: #00ff41;
-    --glass-bg: rgba(10, 14, 39, 0.85);
-    --glass-border: rgba(0, 255, 65, 0.3);
+    --border-color: #ffffff;
+    --glass-bg: rgba(0, 0, 0, 0.85);
     --board-size: min(90vh, 700px);
-    --cell-size: 40px;
+    --cell-size: 38px;
     --grid-bg: rgba(0, 20, 40, 0.5);
     --border-thickness: 15px;
+    --content-padding: 0px;
 }
 
 /* Base Styles */
@@ -104,7 +105,7 @@ body.in-game.flash-success {
     z-index: -1;
 }
 
-/* Game Container with inner rounded corners */
+/* Game Container */
 .game-container {
     position: absolute;
     top: var(--border-thickness);
@@ -114,25 +115,68 @@ body.in-game.flash-success {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 20px;
     overflow: hidden;
-    padding: 20px;
 }
 
-/* Connection Status */
-.connection-status {
+/* Settings Icon */
+.settings-icon {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
+    cursor: pointer;
+    z-index: 1000;
+    transition: transform 0.3s;
+}
+
+.settings-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Popup Styles */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-overlay.active {
+    display: flex;
+}
+
+.popup-content {
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.popup-content h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.settings-section {
+    margin-bottom: 25px;
+}
+
+.settings-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.connection-info {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 20px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
-    border-radius: 10px;
-    z-index: 1000;
 }
 
 .status-dot {
@@ -147,28 +191,29 @@ body.in-game.flash-success {
     background-color: var(--primary-color);
 }
 
-/* Volume Control */
-.volume-control {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
+#volumeValue {
+    margin-left: 10px;
+    color: var(--text-secondary);
+}
+
+.close-popup {
+    width: 100%;
+    padding: 10px;
     border: 2px solid var(--border-color);
-    border-radius: 10px;
-    z-index: 1000;
+    background: transparent;
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
 }
 
-.volume-control label {
-    color: var(--primary-color);
+.close-popup:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
+/* Volume Slider */
 .volume-slider {
-    width: 100px;
+    width: 70%;
     height: 6px;
     -webkit-appearance: none;
     appearance: none;
@@ -180,14 +225,6 @@ body.in-game.flash-success {
 .volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
-    background: var(--primary-color);
-    border-radius: 50%;
-    cursor: pointer;
-}
-
-.volume-slider::-moz-range-thumb {
     width: 16px;
     height: 16px;
     background: var(--primary-color);
@@ -216,15 +253,19 @@ body.in-game.flash-success {
 
 /* Lobby Screen */
 #lobbyScreen {
+    flex-direction: column;
     text-align: center;
     padding: 20px;
 }
 
-.game-title {
-    font-size: 3em;
+.lobby-logo {
     margin-bottom: 40px;
-    color: var(--primary-color);
-    text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+}
+
+.game-logo {
+    max-width: 400px;
+    width: 100%;
+    height: auto;
 }
 
 .lobby-sections {
@@ -237,9 +278,8 @@ body.in-game.flash-success {
 }
 
 .lobby-card {
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
     border-radius: 15px;
     padding: 30px;
     width: 300px;
@@ -264,17 +304,17 @@ body.in-game.flash-success {
 .lobby-card button {
     width: 100%;
     padding: 12px;
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--border-color);
     border-radius: 8px;
-    background: rgba(0, 255, 65, 0.1);
-    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--border-color);
     font-size: 18px;
     cursor: pointer;
     transition: all 0.3s;
 }
 
 .lobby-card button:hover {
-    background: rgba(0, 255, 65, 0.2);
+    background: rgba(255, 255, 255, 0.2);
     transform: translateY(-2px);
 }
 
@@ -282,9 +322,8 @@ body.in-game.flash-success {
 .waiting-content {
     text-align: center;
     padding: 40px;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
     border-radius: 15px;
     max-width: 500px;
     margin: 0 auto;
@@ -301,7 +340,7 @@ body.in-game.flash-success {
 }
 
 .lobby-code-box:hover {
-    background: rgba(0, 255, 65, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
 }
 
@@ -333,46 +372,59 @@ body.in-game.flash-success {
     gap: 10px;
 }
 
+/* Edge Cards */
+.edge-card {
+    position: absolute;
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+}
+
 /* Placement Screen */
 .placement-container {
     display: flex;
-    gap: 30px;
-    padding: 20px;
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    justify-content: center;
-    align-items: flex-start;
     height: 100%;
-    overflow: auto;
+    position: relative;
 }
 
 .placement-left {
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
-    border-radius: 15px;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 33.33%;
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
     padding: 20px;
-    width: 300px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
 }
 
 .placement-center {
-    text-align: center;
+    margin-left: 33.33%;
+    width: 66.67%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.placement-center h2 {
-    margin-bottom: 20px;
-    color: var(--primary-color);
+.placement-grid-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .available-ships {
     margin-bottom: 20px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .ship-item {
     padding: 15px;
     margin: 10px 0;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--primary-color);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
@@ -384,7 +436,6 @@ body.in-game.flash-success {
 
 .ship-item.selected {
     background: rgba(0, 255, 65, 0.2);
-    border-color: var(--primary-color);
 }
 
 .ship-item.placed {
@@ -406,7 +457,7 @@ body.in-game.flash-success {
 }
 
 .placement-controls {
-    margin-top: 20px;
+    margin-top: auto;
 }
 
 .control-btn {
@@ -415,7 +466,7 @@ body.in-game.flash-success {
     margin-bottom: 10px;
     border: 2px solid var(--border-color);
     background: transparent;
-    color: var(--primary-color);
+    color: var(--border-color);
     cursor: pointer;
     border-radius: 8px;
 }
@@ -430,7 +481,7 @@ body.in-game.flash-success {
     padding: 10px;
     border: 2px solid var(--border-color);
     background: transparent;
-    color: var(--primary-color);
+    color: var(--border-color);
     cursor: pointer;
     border-radius: 8px;
     font-size: 20px;
@@ -444,7 +495,7 @@ body.in-game.flash-success {
     padding: 10px 20px;
     border: 2px solid var(--border-color);
     background: transparent;
-    color: var(--primary-color);
+    color: var(--border-color);
     cursor: pointer;
     border-radius: 8px;
     font-size: 16px;
@@ -457,38 +508,46 @@ body.in-game.flash-success {
 }
 
 .ready-btn:not(:disabled):hover {
-    background: rgba(0, 255, 65, 0.2);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Game Screen */
 #gameScreen {
-    padding: 20px;
-    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 .game-layout {
-    display: grid;
-    grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px);
-    gap: 20px;
+    display: flex;
     width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
-    height: calc(100vh - 2 * var(--border-thickness) - 40px);
-    padding: 0 20px;
+    height: 100%;
+    position: relative;
 }
 
 .game-sidebar {
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
-    border-radius: 15px;
+    width: 300px;
     padding: 20px;
     display: flex;
     flex-direction: column;
 }
 
+.game-sidebar.left {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
+    border-color: var(--border-color);
+}
+
 .game-sidebar.right {
-    border-color: var(--danger-color);
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
 }
 
 .game-sidebar h3 {
@@ -500,7 +559,70 @@ body.in-game.flash-success {
     color: var(--danger-color);
 }
 
-/* Ships Display - Identical to placement menu */
+/* Energy Display */
+.energy-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.energy-icon {
+    font-size: 30px;
+}
+
+#energyText {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+/* Powerups */
+.powerups-section {
+    margin-bottom: 20px;
+}
+
+.powerup-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.powerup-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.powerup-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.powerup-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.powerup-btn.active {
+    border-color: var(--warning-color);
+    background: rgba(255, 170, 0, 0.2);
+}
+
+.powerup-icon {
+    font-size: 20px;
+}
+
+/* Ships Display */
 .ships-status-header {
     color: var(--primary-color);
     margin-bottom: 10px;
@@ -518,10 +640,9 @@ body.in-game.flash-success {
 .ship-display-item {
     padding: 15px;
     margin: 10px 0;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--primary-color);
     border-radius: 8px;
     transition: all 0.3s;
-    pointer-events: none;
 }
 
 .ship-display-item.enemy {
@@ -580,32 +701,29 @@ body.in-game.flash-success {
     transform: translateY(-2px);
 }
 
+/* Game Center */
 .game-center {
-    text-align: center;
+    flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
-}
-
-.turn-indicator {
-    margin-bottom: 20px;
-    font-size: 24px;
+    justify-content: center;
+    padding: 20px;
 }
 
 .boards-container {
     display: flex;
+    flex-direction: column;
     gap: 30px;
-    justify-content: center;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
 }
 
 .board-section h3 {
     margin-bottom: 15px;
     color: var(--primary-color);
+    text-align: center;
 }
 
-.board-section:last-child h3 {
+.board-section:first-child h3 {
     color: var(--danger-color);
 }
 
@@ -635,23 +753,28 @@ body.in-game.flash-success {
     margin: 10px 0;
 }
 
-/* Cheats */
-.cheat-title {
+/* End Turn Button */
+.end-turn-btn {
     margin-top: 20px;
-    color: var(--orange-color);
-}
-
-.cheat-display {
-    background: rgba(0, 0, 0, 0.3);
     padding: 15px;
+    border: 2px solid var(--primary-color);
+    background: rgba(0, 255, 65, 0.1);
+    color: var(--primary-color);
+    cursor: pointer;
     border-radius: 8px;
-    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s;
 }
 
-#recommendedShot {
-    font-size: 24px;
-    color: var(--orange-color);
-    font-weight: bold;
+.end-turn-btn:hover:not(:disabled) {
+    background: rgba(0, 255, 65, 0.2);
+    transform: translateY(-2px);
+}
+
+.end-turn-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Game Grid */
@@ -662,7 +785,7 @@ body.in-game.flash-success {
     gap: 2px;
     background: var(--grid-bg);
     padding: 10px;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--primary-color);
     border-radius: 10px;
     width: auto;
     margin: 0 auto;
@@ -724,10 +847,42 @@ body.in-game.flash-success {
     font-size: 24px;
 }
 
+/* Mine Cells */
+.grid-cell.mine {
+    background: var(--purple-color);
+    border-color: var(--purple-color);
+}
+
+.grid-cell.mine::after {
+    content: '💣';
+    position: absolute;
+    font-size: 20px;
+}
+
+/* Radar Cells */
+.grid-cell.radar-area {
+    background: rgba(155, 89, 182, 0.2);
+    border-color: var(--purple-color);
+}
+
+.grid-cell.radar-center {
+    background: var(--purple-color);
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+/* Sunk Ships */
 .grid-cell.sunk {
     background: var(--danger-color);
     animation: sinkAnimation 0.5s ease;
-    box-shadow: inset 0 0 0 3px var(--orange-color);
+}
+
+.ship-outline {
+    position: absolute;
+    border: 3px solid var(--orange-color);
+    pointer-events: none;
+    z-index: 10;
 }
 
 @keyframes sinkAnimation {
@@ -744,15 +899,58 @@ body.in-game.flash-success {
     background: rgba(255, 0, 0, 0.3);
 }
 
-.grid-cell.recommended {
-    box-shadow: 0 0 10px var(--danger-color);
-    animation: pulse-red 1s infinite;
+/* Powerup Previews */
+.grid-cell.cannon-preview {
+    background: rgba(255, 170, 0, 0.3);
+    border-color: var(--warning-color);
 }
 
-@keyframes pulse-red {
-    0% { box-shadow: 0 0 5px var(--danger-color); }
-    50% { box-shadow: 0 0 20px var(--danger-color); }
-    100% { box-shadow: 0 0 5px var(--danger-color); }
+.grid-cell.torpedo-preview {
+    background: rgba(255, 170, 0, 0.3);
+    border-color: var(--warning-color);
+}
+
+/* Shot Animations */
+@keyframes waveAnimation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 0 30px rgba(100, 150, 255, 0);
+    }
+}
+
+@keyframes hitFlash {
+    0%, 100% {
+        background: inherit;
+    }
+    50% {
+        background: var(--danger-color);
+    }
+}
+
+@keyframes torpedoWave {
+    0% {
+        background: rgba(100, 150, 255, 0);
+    }
+    50% {
+        background: rgba(100, 150, 255, 0.5);
+    }
+    100% {
+        background: rgba(100, 150, 255, 0);
+    }
+}
+
+.grid-cell.wave-animation {
+    animation: waveAnimation 0.8s ease-out;
+}
+
+.grid-cell.hit-flash {
+    animation: hitFlash 0.5s ease 2;
+}
+
+.grid-cell.torpedo-wave {
+    animation: torpedoWave 0.8s ease;
 }
 
 /* Game Over */
@@ -760,8 +958,7 @@ body.in-game.flash-success {
     text-align: center;
     padding: 40px;
     background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--border-color);
+    border: var(--border-thickness) solid var(--border-color);
     border-radius: 15px;
     max-width: 500px;
     margin: 0 auto;
@@ -786,10 +983,26 @@ body.in-game.flash-success {
     border-radius: 10px;
 }
 
+#newGameBtn {
+    padding: 12px 30px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--border-color);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#newGameBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
 /* Notifications */
 .notifications {
     position: fixed;
-    top: calc(var(--border-thickness) + 60px);
+    top: calc(var(--border-thickness) + 20px);
     right: calc(var(--border-thickness) + 20px);
     z-index: 1000;
 }
@@ -857,45 +1070,46 @@ button:hover {
 /* Media Queries */
 @media (max-width: 1400px) {
     :root {
-        --cell-size: 35px;
+        --cell-size: 32px;
     }
     
-    .game-layout {
-        grid-template-columns: minmax(200px, 250px) 1fr minmax(200px, 250px);
+    .game-sidebar {
+        width: 250px;
+    }
+    
+    .boards-container {
+        gap: 20px;
     }
 }
 
 @media (max-width: 1200px) {
-    .boards-container {
-        flex-direction: column;
-        align-items: center;
+    :root {
+        --cell-size: 28px;
     }
     
-    .game-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
+    .powerup-btn span:not(.powerup-icon) {
+        display: none;
     }
     
-    .game-sidebar {
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
+    .powerup-btn {
+        justify-content: center;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1000px) {
     :root {
-        --cell-size: 30px;
-        --border-thickness: 10px;
+        --cell-size: 25px;
     }
     
-    .placement-container {
-        flex-direction: column;
-        align-items: center;
+    .game-sidebar {
+        width: 200px;
     }
     
-    .placement-left {
-        width: 100%;
-        max-width: 400px;
+    .game-sidebar h3 {
+        font-size: 14px;
+    }
+    
+    .stat-item {
+        font-size: 14px;
     }
 }
