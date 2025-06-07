@@ -16,7 +16,6 @@
     --cell-size: 40px;
     --grid-bg: rgba(0, 20, 40, 0.5);
     --border-thickness: 15px;
-
 }
 
 /* Base Styles */
@@ -117,7 +116,7 @@ body.in-game.flash-success {
     justify-content: center;
     border-radius: 20px;
     overflow: hidden;
-    padding: 20px; /* NEU hinzufügen */
+    padding: 20px;
 }
 
 /* Connection Status */
@@ -230,9 +229,11 @@ body.in-game.flash-success {
 
 .lobby-sections {
     display: flex;
-    gap: 40px;
+    gap: 30px;
     justify-content: center;
     flex-wrap: wrap;
+    max-width: 700px;
+    margin: 0 auto;
 }
 
 .lobby-card {
@@ -335,13 +336,15 @@ body.in-game.flash-success {
 /* Placement Screen */
 .placement-container {
     display: flex;
-    gap: 40px;
+    gap: 30px;
     padding: 20px;
     width: 100%;
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    height: 100%;
+    overflow: auto;
 }
 
 .placement-left {
@@ -396,8 +399,8 @@ body.in-game.flash-success {
 }
 
 .ship-cell {
-    width: 25px;
-    height: 25px;
+    width: 20px;
+    height: 20px;
     background: var(--primary-color);
     border: 1px solid var(--bg-dark);
 }
@@ -465,13 +468,13 @@ body.in-game.flash-success {
 
 .game-layout {
     display: grid;
-    grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px); /* ÄNDERN */
-    gap: 20px; /* ÄNDERN: war 30px */
+    grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px);
+    gap: 20px;
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
-    height: calc(100vh - 2 * var(--border-thickness) - 40px); /* ÄNDERN */
-    padding: 0 20px; /* NEU */
+    height: calc(100vh - 2 * var(--border-thickness) - 40px);
+    padding: 0 20px;
 }
 
 .game-sidebar {
@@ -538,8 +541,8 @@ body.in-game.flash-success {
 }
 
 .ship-display-cell {
-    width: 25px;
-    height: 25px;
+    width: 20px;
+    height: 20px;
     background: var(--primary-color);
     border: 1px solid var(--bg-dark);
 }
@@ -591,8 +594,10 @@ body.in-game.flash-success {
 
 .boards-container {
     display: flex;
-    gap: 40px;
+    gap: 30px;
     justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
 
 .board-section h3 {
@@ -649,16 +654,17 @@ body.in-game.flash-success {
     font-weight: bold;
 }
 
+/* Game Grid */
 .game-grid {
     display: grid;
-    grid-template-columns: repeat(11, var(--cell-size)); /* ÄNDERN */
-    grid-template-rows: repeat(11, var(--cell-size)); /* NEU */
+    grid-template-columns: repeat(11, var(--cell-size));
+    grid-template-rows: repeat(11, var(--cell-size));
     gap: 2px;
     background: var(--grid-bg);
     padding: 10px;
     border: 2px solid var(--border-color);
     border-radius: 10px;
-    width: auto; /* ÄNDERN: war fit-content */
+    width: auto;
     margin: 0 auto;
 }
 
@@ -677,8 +683,8 @@ body.in-game.flash-success {
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    font-size: 14px; /* ÄNDERN: war 18px */
-    overflow: hidden; /* NEU */
+    font-size: 14px;
+    overflow: hidden;
 }
 
 .grid-header {
@@ -847,7 +853,8 @@ button:hover {
 .secondary-btn:hover {
     background: rgba(255, 68, 68, 0.1);
 }
-/* HINZUFÜGEN am Ende der Datei (nach Zeile ~830) */
+
+/* Media Queries */
 @media (max-width: 1400px) {
     :root {
         --cell-size: 35px;
@@ -873,5 +880,22 @@ button:hover {
         width: 100%;
         max-width: 600px;
         margin: 0 auto;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --cell-size: 30px;
+        --border-thickness: 10px;
+    }
+    
+    .placement-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .placement-left {
+        width: 100%;
+        max-width: 400px;
     }
 }
