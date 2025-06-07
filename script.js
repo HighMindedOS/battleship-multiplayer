@@ -29,8 +29,8 @@ const gameState = {
     isHost: false,
     gamePhase: 'waiting',
     currentTurn: null,
-    canShootAgain: false,
-    isFirstTurn: true,
+    isMyTurn: false,
+    hasShot: false,
     
     // Ship Configuration
     shipTypes: [
@@ -52,17 +52,35 @@ const gameState = {
     shipOrientation: 'horizontal',
     placedShips: [],
     
+    // Energy System
+    energy: 0,
+    maxEnergy: 10,
+    
+    // Powerup State
+    activePowerup: null,
+    powerupMode: null,
+    torpedoDirection: 'top', // top, bottom, left, right
+    
+    // Mine and Radar tracking
+    myMines: [], // {row, col}
+    enemyMines: [], // mines we've discovered
+    radarScans: [], // {row, col, value}
+    
     // Stats
     shots: 0,
     hits: 0,
     sunkShips: 0,
+    minesPlaced: 0,
+    minesHit: 0,
+    powerupsUsed: 0,
     
     // Track enemy sunk ships
     enemySunkShips: {},
     
-    // Cheats - Always Active
+    // Cheats - Disabled but code remains
     probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
     bestShot: null,
+    cheatsEnabled: false,
     
     // Audio
     volume: 0.5,
@@ -89,10 +107,8 @@ function initializeSounds() {
         const audio = new Audio(path);
         audio.volume = gameState.volume;
         
-        // Error handling for missing files
         audio.onerror = () => {
             console.warn(`Sound file not found: ${path}`);
-            // Create silent audio as fallback
             gameState.sounds[key] = new Audio();
         };
         
@@ -125,7 +141,6 @@ function playSound(soundName) {
         sound.currentTime = 0;
         sound.volume = gameState.volume;
         
-        // Clone for overlapping sounds
         const clone = sound.cloneNode();
         clone.volume = gameState.volume;
         clone.play().catch(e => console.log('Sound play failed:', e));
@@ -139,6 +154,11 @@ function updateVolume(value) {
             sound.volume = gameState.volume;
         }
     });
+    
+    const volumeValue = document.getElementById('volumeValue');
+    if (volumeValue) {
+        volumeValue.textContent = value + '%';
+    }
 }
 
 // Utility Functions
@@ -154,7 +174,6 @@ function showScreen(screenName) {
     });
     gameState.currentScreen = screenName;
     
-    // Add in-game class to body when in game screen
     if (screenName === 'game') {
         document.body.classList.add('in-game');
     } else {
@@ -177,17 +196,34 @@ function showNotification(message, type = 'info') {
 }
 
 function updateConnectionStatus(connected) {
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-text');
+    const statusDots = document.querySelectorAll('.status-dot');
+    const statusTexts = document.querySelectorAll('.status-text');
     
-    if (statusDot && statusText) {
+    statusDots.forEach(dot => {
         if (connected) {
-            statusDot.classList.add('connected');
-            statusText.textContent = 'Verbunden';
+            dot.classList.add('connected');
         } else {
-            statusDot.classList.remove('connected');
-            statusText.textContent = 'Offline';
+            dot.classList.remove('connected');
         }
+    });
+    
+    statusTexts.forEach(text => {
+        text.textContent = connected ? 'Verbunden' : 'Offline';
+    });
+}
+
+// Settings Popup
+function showSettingsPopup() {
+    const popup = document.getElementById('settingsPopup');
+    if (popup) {
+        popup.classList.add('active');
+    }
+}
+
+function hideSettingsPopup() {
+    const popup = document.getElementById('settingsPopup');
+    if (popup) {
+        popup.classList.remove('active');
     }
 }
 
@@ -230,6 +266,261 @@ function createGridCell(content, isHeader) {
     return cell;
 }
 
+// Energy System
+function updateEnergy(amount) {
+    gameState.energy = Math.max(0, Math.min(gameState.maxEnergy, gameState.energy + amount));
+    updateEnergyDisplay();
+    updatePowerupButtons();
+}
+
+function updateEnergyDisplay() {
+    const energyText = document.getElementById('energyText');
+    if (energyText) {
+        energyText.textContent = `${gameState.energy}/${gameState.maxEnergy}`;
+    }
+}
+
+function updatePowerupButtons() {
+    const powerupButtons = document.querySelectorAll('.powerup-btn');
+    powerupButtons.forEach(btn => {
+        const cost = parseInt(btn.dataset.cost);
+        btn.disabled = gameState.energy < cost || !gameState.isMyTurn;
+        
+        if (gameState.activePowerup === btn.id) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+// Powerup Functions
+function activatePowerup(powerupType) {
+    const costs = {
+        mine: 2,
+        radar: 3,
+        cannon: 5,
+        torpedo: 9
+    };
+    
+    if (gameState.energy < costs[powerupType]) {
+        showNotification('Nicht genug Energie!', 'error');
+        return;
+    }
+    
+    // Deactivate if clicking same powerup
+    if (gameState.powerupMode === powerupType) {
+        deactivatePowerup();
+        return;
+    }
+    
+    gameState.powerupMode = powerupType;
+    gameState.activePowerup = `${powerupType}Btn`;
+    updatePowerupButtons();
+    
+    // Clear any existing previews
+    clearAllPreviews();
+    
+    // Add appropriate event listeners based on powerup
+    if (powerupType === 'mine') {
+        addMinePlacementListeners();
+    } else if (powerupType === 'torpedo') {
+        showNotification('Nutze Pfeiltasten für Richtung', 'info');
+        addTorpedoListeners();
+    }
+}
+
+function deactivatePowerup() {
+    gameState.powerupMode = null;
+    gameState.activePowerup = null;
+    updatePowerupButtons();
+    clearAllPreviews();
+    removePowerupListeners();
+}
+
+function addMinePlacementListeners() {
+    const playerGrid = document.getElementById('playerGrid');
+    if (playerGrid) {
+        playerGrid.addEventListener('mouseover', handleMinePlacementHover);
+        playerGrid.addEventListener('click', handleMinePlacement);
+    }
+}
+
+function removePowerupListeners() {
+    const playerGrid = document.getElementById('playerGrid');
+    if (playerGrid) {
+        playerGrid.removeEventListener('mouseover', handleMinePlacementHover);
+        playerGrid.removeEventListener('click', handleMinePlacement);
+    }
+    
+    document.removeEventListener('keydown', handleTorpedoDirection);
+}
+
+function handleMinePlacementHover(e) {
+    if (!e.target.classList.contains('grid-cell') || e.target.classList.contains('grid-header')) {
+        return;
+    }
+    
+    clearAllPreviews();
+    
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+    
+    if (canPlaceMine(row, col)) {
+        e.target.classList.add('preview');
+    } else {
+        e.target.classList.add('invalid');
+    }
+}
+
+function handleMinePlacement(e) {
+    if (!e.target.classList.contains('grid-cell') || e.target.classList.contains('grid-header')) {
+        return;
+    }
+    
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+    
+    if (!canPlaceMine(row, col)) {
+        showNotification('Hier kann keine Mine platziert werden!', 'error');
+        return;
+    }
+    
+    placeMine(row, col);
+}
+
+function canPlaceMine(row, col) {
+    // Can't place on ships or existing mines
+    return gameState.myBoard[row][col] === 'water' && 
+           !gameState.myMines.some(mine => mine.row === row && mine.col === col);
+}
+
+function placeMine(row, col) {
+    // Deduct energy
+    updateEnergy(-2);
+    
+    // Add mine to tracking
+    gameState.myMines.push({ row, col });
+    gameState.minesPlaced++;
+    
+    // Update visual
+    const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
+    if (cell) {
+        cell.classList.add('mine');
+    }
+    
+    // Update Firebase
+    if (gameState.lobbyRef) {
+        gameState.lobbyRef.child(`players/${gameState.playerId}/mines`).set(gameState.myMines);
+    }
+    
+    // Update stats
+    updateStats();
+    
+    // Deactivate powerup
+    deactivatePowerup();
+    showNotification('Mine platziert!', 'success');
+    
+    // Increment powerups used
+    gameState.powerupsUsed++;
+}
+
+// Add torpedo direction handling
+function addTorpedoListeners() {
+    document.addEventListener('keydown', handleTorpedoDirection);
+}
+
+function handleTorpedoDirection(e) {
+    if (gameState.powerupMode !== 'torpedo') return;
+    
+    const directions = {
+        'ArrowUp': 'top',
+        'ArrowDown': 'bottom',
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right'
+    };
+    
+    if (directions[e.key]) {
+        e.preventDefault();
+        gameState.torpedoDirection = directions[e.key];
+        showNotification(`Torpedo-Richtung: ${getDirectionName(gameState.torpedoDirection)}`, 'info');
+        updateTorpedoPreview();
+    }
+}
+
+function getDirectionName(direction) {
+    const names = {
+        'top': 'Von oben',
+        'bottom': 'Von unten',
+        'left': 'Von links',
+        'right': 'Von rechts'
+    };
+    return names[direction];
+}
+
+function updateTorpedoPreview() {
+    // This will be called when hovering over enemy grid with torpedo active
+    const enemyGrid = document.getElementById('enemyGrid');
+    if (!enemyGrid) return;
+    
+    // Clear existing previews
+    clearAllPreviews();
+    
+    // Get current hover position if any
+    const hoverCell = enemyGrid.querySelector('.grid-cell:hover');
+    if (hoverCell && !hoverCell.classList.contains('grid-header')) {
+        const row = parseInt(hoverCell.dataset.row);
+        const col = parseInt(hoverCell.dataset.col);
+        showTorpedoPreview(row, col);
+    }
+}
+
+function showTorpedoPreview(targetRow, targetCol) {
+    const cells = getTorpedoPath(targetRow, targetCol);
+    cells.forEach(({row, col}) => {
+        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+            cell.classList.add('torpedo-preview');
+        }
+    });
+}
+
+function getTorpedoPath(targetRow, targetCol) {
+    const path = [];
+    
+    switch (gameState.torpedoDirection) {
+        case 'top':
+            for (let row = 0; row <= targetRow; row++) {
+                path.push({row, col: targetCol});
+            }
+            break;
+        case 'bottom':
+            for (let row = 9; row >= targetRow; row--) {
+                path.push({row, col: targetCol});
+            }
+            break;
+        case 'left':
+            for (let col = 0; col <= targetCol; col++) {
+                path.push({row: targetRow, col});
+            }
+            break;
+        case 'right':
+            for (let col = 9; col >= targetCol; col--) {
+                path.push({row: targetRow, col});
+            }
+            break;
+    }
+    
+    return path;
+}
+
+// Clear all preview highlights
+function clearAllPreviews() {
+    document.querySelectorAll('.preview, .invalid, .cannon-preview, .torpedo-preview').forEach(cell => {
+        cell.classList.remove('preview', 'invalid', 'cannon-preview', 'torpedo-preview');
+    });
+}
+
 // Lobby Functions
 function createLobby() {
     const playerName = document.getElementById('playerName').value.trim();
@@ -255,12 +546,16 @@ function createLobby() {
                 name: playerName,
                 ready: false,
                 board: null,
+                ships: [],
+                mines: [],
+                energy: 0,
                 shots: []
             }
         },
         gameState: 'waiting',
         currentTurn: null,
-        winner: null
+        winner: null,
+        radarScans: []
     };
     
     gameState.lobbyRef.set(lobbyData).then(() => {
@@ -309,6 +604,9 @@ function joinLobby() {
             name: playerName,
             ready: false,
             board: null,
+            ships: [],
+            mines: [],
+            energy: 0,
             shots: []
         }).then(() => {
             setupLobbyListeners();
@@ -320,12 +618,20 @@ function joinLobby() {
         showNotification('Fehler beim Beitreten: ' + error.message, 'error');
     });
 }
+// Continuation of script.js - Part 2
 
 function setupLobbyListeners() {
     // Listen for player changes
     gameState.lobbyRef.child('players').on('value', snapshot => {
         const players = snapshot.val() || {};
         updatePlayersList(players);
+        
+        // Store enemy name for later use
+        const playerIds = Object.keys(players);
+        const enemyId = playerIds.find(id => id !== gameState.playerId);
+        if (enemyId && players[enemyId]) {
+            gameState.enemyName = players[enemyId].name;
+        }
         
         // Check if both players are present
         if (Object.keys(players).length === 2 && gameState.currentScreen === 'waiting') {
@@ -351,7 +657,16 @@ function setupLobbyListeners() {
     // Listen for turn changes
     gameState.lobbyRef.child('currentTurn').on('value', snapshot => {
         gameState.currentTurn = snapshot.val();
+        gameState.isMyTurn = gameState.currentTurn === gameState.playerId;
         updateTurnIndicator();
+    });
+    
+    // Listen for radar scans
+    gameState.lobbyRef.child('radarScans').on('child_added', snapshot => {
+        const scan = snapshot.val();
+        if (scan && gameState.currentScreen === 'game') {
+            handleRadarScan(scan);
+        }
     });
     
     // Handle disconnection
@@ -461,7 +776,7 @@ function selectShip(index) {
 }
 
 function handleKeyPress(e) {
-    if (e.key.toLowerCase() === 'r') {
+    if (e.key.toLowerCase() === 'r' && gameState.currentScreen === 'placement') {
         rotateShip();
     }
 }
@@ -709,8 +1024,101 @@ function initializeGame() {
     // Initialize pending shots listener
     initializePendingShotsListener();
     
-    // Initialize auto-cheat system
-    updateRecommendation();
+    // Update enemy name
+    const enemyNameEl = document.getElementById('enemyName');
+    if (enemyNameEl && gameState.enemyName) {
+        enemyNameEl.textContent = gameState.enemyName;
+    }
+    
+    // Setup enemy grid hover for powerups
+    const enemyGrid = document.getElementById('enemyGrid');
+    if (enemyGrid) {
+        enemyGrid.addEventListener('mouseover', handleEnemyGridHover);
+        enemyGrid.addEventListener('mouseout', clearAllPreviews);
+    }
+    
+    // Restore mines from Firebase
+    restoreMinesFromFirebase();
+}
+
+function restoreMinesFromFirebase() {
+    gameState.lobbyRef.child(`players/${gameState.playerId}/mines`).once('value').then(snapshot => {
+        const mines = snapshot.val();
+        if (mines) {
+            gameState.myMines = mines;
+            // Restore visual representation
+            mines.forEach(mine => {
+                const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${mine.row}"][data-col="${mine.col}"]`);
+                if (cell) {
+                    cell.classList.add('mine');
+                }
+            });
+        }
+    });
+}
+
+function handleEnemyGridHover(e) {
+    if (!e.target.classList.contains('grid-cell') || e.target.classList.contains('grid-header')) {
+        return;
+    }
+    
+    if (!gameState.isMyTurn || !gameState.powerupMode) return;
+    
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+    
+    clearAllPreviews();
+    
+    switch (gameState.powerupMode) {
+        case 'radar':
+            showRadarPreview(row, col);
+            break;
+        case 'cannon':
+            showCannonPreview(row, col);
+            break;
+        case 'torpedo':
+            showTorpedoPreview(row, col);
+            break;
+    }
+}
+
+function showRadarPreview(centerRow, centerCol) {
+    // Check if can place radar here
+    if (gameState.enemyBoard[centerRow][centerCol] !== 'unknown') {
+        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${centerRow}"][data-col="${centerCol}"]`);
+        if (cell) cell.classList.add('invalid');
+        return;
+    }
+    
+    // Show 3x3 preview
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const r = centerRow + dr;
+            const c = centerCol + dc;
+            if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+                const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${r}"][data-col="${c}"]`);
+                if (cell) {
+                    cell.classList.add('preview');
+                }
+            }
+        }
+    }
+}
+
+function showCannonPreview(row, col) {
+    // Show 2x2 preview
+    for (let dr = 0; dr <= 1; dr++) {
+        for (let dc = 0; dc <= 1; dc++) {
+            const r = row + dr;
+            const c = col + dc;
+            if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+                const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${r}"][data-col="${c}"]`);
+                if (cell) {
+                    cell.classList.add('cannon-preview');
+                }
+            }
+        }
+    }
 }
 
 function setupShotListeners() {
@@ -741,44 +1149,47 @@ function updatePlayerBoard() {
         }
     }
 }
+// Continuation of script.js - Part 3
 
 function updateTurnIndicator() {
-    const turnIndicator = document.getElementById('currentPlayer');
     const enemyGrid = document.getElementById('enemyGrid');
+    const endTurnBtn = document.getElementById('endTurnBtn');
     
-    if (!turnIndicator || !enemyGrid) return;
+    if (!enemyGrid || !endTurnBtn) return;
     
-    if (gameState.currentTurn === gameState.playerId) {
-        turnIndicator.textContent = 'Du bist dran!';
-        turnIndicator.style.color = 'var(--primary-color)';
+    if (gameState.isMyTurn) {
         enemyGrid.classList.add('active');
         enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
-        updateRecommendation();
+        
+        // Add energy at turn start
+        if (gameState.energy < gameState.maxEnergy) {
+            updateEnergy(1);
+            showNotification('+1 Energie (Zugbeginn)', 'info');
+        }
+        
+        // Reset shot status
+        gameState.hasShot = false;
+        endTurnBtn.disabled = true;
         
         // Update body border for player turn
         document.body.classList.add('player-turn');
         document.body.classList.remove('enemy-turn');
         
-        // Play turn sound only on first turn of the round
-        if (gameState.isFirstTurn) {
-            playSound('turn');
-            gameState.isFirstTurn = false;
-        }
+        // Play turn sound
+        playSound('turn');
     } else {
-        turnIndicator.textContent = 'Gegner ist dran...';
-        turnIndicator.style.color = 'var(--text-secondary)';
         enemyGrid.classList.remove('active');
         enemyGrid.classList.add('disabled');
         enableEnemyGrid(false);
+        endTurnBtn.disabled = true;
         
         // Update body border for enemy turn
         document.body.classList.add('enemy-turn');
         document.body.classList.remove('player-turn');
-        
-        // Reset first turn flag for next player turn
-        gameState.isFirstTurn = true;
     }
+    
+    updatePowerupButtons();
 }
 
 function enableEnemyGrid(enabled) {
@@ -789,8 +1200,20 @@ function enableEnemyGrid(enabled) {
 }
 
 function handleEnemyCellClick(row, col) {
-    if (gameState.currentTurn !== gameState.playerId) {
+    if (!gameState.isMyTurn) {
         showNotification('Nicht dein Zug!', 'warning');
+        return;
+    }
+    
+    // Handle powerup clicks
+    if (gameState.powerupMode) {
+        handlePowerupClick(row, col);
+        return;
+    }
+    
+    // Normal shot
+    if (gameState.hasShot) {
+        showNotification('Du hast bereits geschossen! Nutze Powerups oder beende deinen Zug.', 'warning');
         return;
     }
     
@@ -799,8 +1222,29 @@ function handleEnemyCellClick(row, col) {
         return;
     }
     
+    makeShot(row, col);
+}
+
+function handlePowerupClick(row, col) {
+    switch (gameState.powerupMode) {
+        case 'radar':
+            placeRadar(row, col);
+            break;
+        case 'cannon':
+            fireCannon(row, col);
+            break;
+        case 'torpedo':
+            fireTorpedo(row, col);
+            break;
+    }
+}
+
+function makeShot(row, col) {
     // Disable grid while processing
     enableEnemyGrid(false);
+    
+    // Mark as shot
+    gameState.hasShot = true;
     
     // Make the shot
     const shotId = Date.now().toString();
@@ -808,22 +1252,262 @@ function handleEnemyCellClick(row, col) {
         row: row,
         col: col,
         shotId: shotId,
-        shooterId: gameState.playerId
+        shooterId: gameState.playerId,
+        type: 'normal'
     };
     
     // Send shot to enemy
     const enemyId = getEnemyId();
     gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
-        // Wait for result
         gameState.shots++;
         updateStats();
+        
+        // Enable end turn button
+        const endTurnBtn = document.getElementById('endTurnBtn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = false;
+        }
+    });
+}
+
+function placeRadar(centerRow, centerCol) {
+    if (gameState.enemyBoard[centerRow][centerCol] !== 'unknown') {
+        showNotification('Radar kann nur auf unbekannten Feldern platziert werden!', 'error');
+        return;
+    }
+    
+    // Deduct energy
+    updateEnergy(-3);
+    gameState.powerupsUsed++;
+    
+    // Calculate scan value
+    let count = 0;
+    const positions = [];
+    
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const r = centerRow + dr;
+            const c = centerCol + dc;
+            if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+                positions.push({row: r, col: c});
+                
+                // Count ships and mines in range
+                // This will be calculated on enemy side
+            }
+        }
+    }
+    
+    // Send radar request
+    const radarData = {
+        centerRow,
+        centerCol,
+        positions,
+        playerId: gameState.playerId,
+        timestamp: Date.now()
+    };
+    
+    gameState.lobbyRef.child('radarScans').push(radarData);
+    
+    deactivatePowerup();
+    showNotification('Radar-Scan gestartet...', 'info');
+}
+
+function handleRadarScan(scan) {
+    if (scan.playerId === gameState.playerId) {
+        // Our radar scan - wait for result
+        return;
+    }
+    
+    // Enemy radar scan on our board
+    let count = 0;
+    
+    scan.positions.forEach(pos => {
+        if (gameState.myBoard[pos.row][pos.col] === 'ship') {
+            count++;
+        }
+        if (gameState.myMines.some(mine => mine.row === pos.row && mine.col === pos.col)) {
+            count++;
+        }
+    });
+    
+    // Send result back
+    gameState.lobbyRef.child(`radarResults/${scan.playerId}/${scan.timestamp}`).set({
+        centerRow: scan.centerRow,
+        centerCol: scan.centerCol,
+        count: count,
+        positions: scan.positions
+    });
+}
+
+function fireCannon(row, col) {
+    // Check if all 2x2 cells are valid
+    const targets = [];
+    for (let dr = 0; dr <= 1; dr++) {
+        for (let dc = 0; dc <= 1; dc++) {
+            const r = row + dr;
+            const c = col + dc;
+            if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+                targets.push({row: r, col: c});
+            }
+        }
+    }
+    
+    if (targets.length < 4) {
+        showNotification('Geschütz muss vollständig auf dem Spielfeld sein!', 'error');
+        return;
+    }
+    
+    // Deduct energy
+    updateEnergy(-5);
+    gameState.powerupsUsed++;
+    gameState.hasShot = true;
+    
+    // Fire at each target sequentially
+    fireCannonSequence(targets, 0);
+    
+    deactivatePowerup();
+}
+
+function fireCannonSequence(targets, index) {
+    if (index >= targets.length) {
+        // All shots fired
+        const endTurnBtn = document.getElementById('endTurnBtn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = false;
+        }
+        return;
+    }
+    
+    const target = targets[index];
+    
+    // Skip if already shot
+    if (gameState.enemyBoard[target.row][target.col] !== 'unknown') {
+        fireCannonSequence(targets, index + 1);
+        return;
+    }
+    
+    // Make shot
+    const shotId = Date.now().toString() + '_' + index;
+    const shotData = {
+        row: target.row,
+        col: target.col,
+        shotId: shotId,
+        shooterId: gameState.playerId,
+        type: 'cannon'
+    };
+    
+    const enemyId = getEnemyId();
+    gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
+        gameState.shots++;
+        updateStats();
+        
+        // Wait before next shot
+        setTimeout(() => {
+            fireCannonSequence(targets, index + 1);
+        }, 400);
+    });
+}
+
+function fireTorpedo(row, col) {
+    const path = getTorpedoPath(row, col);
+    
+    // Deduct energy
+    updateEnergy(-9);
+    gameState.powerupsUsed++;
+    gameState.hasShot = true;
+    
+    // Fire torpedo
+    fireTorpedoSequence(path, 0);
+    
+    deactivatePowerup();
+}
+
+function fireTorpedoSequence(path, index) {
+    if (index >= path.length) {
+        // Torpedo finished
+        const endTurnBtn = document.getElementById('endTurnBtn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = false;
+        }
+        return;
+    }
+    
+    const target = path[index];
+    
+    // Check if we should stop (hit unshot mine or ship)
+    if (gameState.enemyBoard[target.row][target.col] === 'unknown') {
+        // Make shot
+        const shotId = Date.now().toString() + '_torpedo_' + index;
+        const shotData = {
+            row: target.row,
+            col: target.col,
+            shotId: shotId,
+            shooterId: gameState.playerId,
+            type: 'torpedo',
+            torpedoIndex: index,
+            torpedoPath: path
+        };
+        
+        const enemyId = getEnemyId();
+        gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
+            gameState.shots++;
+            updateStats();
+            
+            // Create wave animation
+            createTorpedoWave(target.row, target.col);
+            
+            // Continue after delay
+            setTimeout(() => {
+                // Check if we hit something that stops torpedo
+                if (gameState.enemyBoard[target.row][target.col] === 'hit') {
+                    // Stop torpedo
+                    const endTurnBtn = document.getElementById('endTurnBtn');
+                    if (endTurnBtn) {
+                        endTurnBtn.disabled = false;
+                    }
+                } else {
+                    // Continue
+                    fireTorpedoSequence(path, index + 1);
+                }
+            }, 400);
+        });
+    } else {
+        // Skip already shot cells
+        fireTorpedoSequence(path, index + 1);
+    }
+}
+
+function createTorpedoWave(row, col) {
+    // Create wave effect on adjacent cells
+    const direction = gameState.torpedoDirection;
+    const adjacents = [];
+    
+    if (direction === 'top' || direction === 'bottom') {
+        // Horizontal wave
+        adjacents.push({row, col: col - 1});
+        adjacents.push({row, col: col + 1});
+    } else {
+        // Vertical wave
+        adjacents.push({row: row - 1, col});
+        adjacents.push({row: row + 1, col});
+    }
+    
+    adjacents.forEach(adj => {
+        if (adj.row >= 0 && adj.row < 10 && adj.col >= 0 && adj.col < 10) {
+            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${adj.row}"][data-col="${adj.col}"]`);
+            if (cell) {
+                cell.classList.add('torpedo-wave');
+                setTimeout(() => {
+                    cell.classList.remove('torpedo-wave');
+                }, 800);
+            }
+        }
     });
 }
 
 function getEnemyId() {
     let enemyId = null;
     
-    // Get enemy ID synchronously from cached data
     gameState.lobbyRef.child('players').once('value', snapshot => {
         const players = snapshot.val();
         const playerIds = Object.keys(players);
@@ -834,7 +1518,7 @@ function getEnemyId() {
 }
 
 function handleShotResult(result) {
-    const { row, col, isHit, isSunk, shipType } = result;
+    const { row, col, isHit, isSunk, shipType, isMineTrigger, mineShots } = result;
     
     // Update enemy board
     gameState.enemyBoard[row][col] = isHit ? 'hit' : 'miss';
@@ -842,10 +1526,19 @@ function handleShotResult(result) {
     const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
     if (cell) {
         cell.classList.add(isHit ? 'hit' : 'miss');
+        
+        if (!isHit) {
+            // Miss animation
+            cell.classList.add('wave-animation');
+        }
     }
     
     if (isHit) {
         gameState.hits++;
+        
+        // Add energy for hit
+        updateEnergy(1);
+        showNotification('+1 Energie (Treffer!)', 'success');
         
         // Flash green border on hit
         document.body.classList.add('flash-success');
@@ -862,33 +1555,70 @@ function handleShotResult(result) {
             
             updateShipStatus();
             
-            // Play sunk sound (not hit sound)
-            playSound('sunk');
+            // Play sounds in sequence
+            playSound('hit');
+            setTimeout(() => playSound('sunk'), 500);
             
             // Check for victory
             checkVictory();
         } else {
-            // Play hit sound only if not sunk
             playSound('hit');
         }
         
-        // IMPORTANT: Player gets another turn after a hit!
-        gameState.canShootAgain = true;
+        // Re-enable grid for more actions
         enableEnemyGrid(true);
-        showNotification('Treffer! Du darfst nochmal schießen!', 'success');
-        updateRecommendation();
     } else {
         playSound('miss');
-        gameState.canShootAgain = false;
-        // Switch turns only on miss
-        switchTurn();
+    }
+    
+    // Handle mine trigger
+    if (isMineTrigger && mineShots) {
+        showNotification('Mine ausgelöst! Zusätzliche Schüsse werden abgefeuert...', 'warning');
+        gameState.minesHit++;
+        
+        // Process additional mine shots
+        setTimeout(() => {
+            processMineShots(mineShots);
+        }, 1000);
     }
     
     updateStats();
 }
 
+function processMineShots(mineShots) {
+    let index = 0;
+    
+    function fireNext() {
+        if (index >= mineShots.length) return;
+        
+        const shot = mineShots[index];
+        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${shot.row}"][data-col="${shot.col}"]`);
+        
+        if (cell) {
+            gameState.enemyBoard[shot.row][shot.col] = shot.isHit ? 'hit' : 'miss';
+            cell.classList.add(shot.isHit ? 'hit' : 'miss');
+            
+            if (shot.isHit) {
+                gameState.hits++;
+                playSound('hit');
+            } else {
+                playSound('miss');
+                cell.classList.add('wave-animation');
+            }
+        }
+        
+        gameState.shots++;
+        updateStats();
+        
+        index++;
+        setTimeout(fireNext, 500);
+    }
+    
+    fireNext();
+}
+
 function handleIncomingShot(shot) {
-    const { row, col, shotId, shooterId } = shot;
+    const { row, col, shotId, shooterId, type } = shot;
     const cellContent = gameState.myBoard[row][col];
     
     const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
@@ -899,14 +1629,38 @@ function handleIncomingShot(shot) {
         isHit: false,
         isSunk: false,
         shipType: null,
-        shipPositions: []
+        shipPositions: [],
+        isMineTrigger: false,
+        mineShots: []
     };
     
-    if (cellContent === 'ship') {
+    // Check for mine hit
+    const mineIndex = gameState.myMines.findIndex(mine => mine.row === row && mine.col === col);
+    if (mineIndex !== -1) {
+        // Mine triggered
+        result.isMineTrigger = true;
+        
+        // Remove mine
+        gameState.myMines.splice(mineIndex, 1);
+        
+        // Update visual
+        if (cell) {
+            cell.classList.remove('mine');
+            cell.classList.add('miss');
+        }
+        
+        // Generate random shots
+        result.mineShots = generateMineShots();
+        
+        playSound('miss');
+    } else if (cellContent === 'ship') {
         // Hit
         gameState.myBoard[row][col] = 'hit';
         if (cell) {
             cell.classList.add('hit');
+            
+            // Hit animation on adjacent cells
+            animateHitAdjacent(row, col);
         }
         result.isHit = true;
         
@@ -920,17 +1674,78 @@ function handleIncomingShot(shot) {
             result.isSunk = true;
             result.shipType = sunkShip.type;
             result.shipPositions = sunkShip.positions;
+            
+            // Play sounds in sequence
+            playSound('hit');
+            setTimeout(() => playSound('sunk'), 500);
+        } else {
+            playSound('hit');
         }
     } else {
         // Miss
         gameState.myBoard[row][col] = 'miss';
         if (cell) {
             cell.classList.add('miss');
+            cell.classList.add('wave-animation');
         }
+        
+        playSound('miss');
     }
     
     // Send result back
     gameState.lobbyRef.child(`shotResults/${shooterId}/${shotId}`).set(result);
+}
+
+function animateHitAdjacent(row, col) {
+    // Animate cells within radius 1
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            
+            const r = row + dr;
+            const c = col + dc;
+            
+            if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+                const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${r}"][data-col="${c}"]`);
+                if (cell) {
+                    cell.classList.add('hit-flash');
+                    setTimeout(() => {
+                        cell.classList.remove('hit-flash');
+                    }, 1000);
+                }
+            }
+        }
+    }
+}
+
+function generateMineShots() {
+    const shots = [];
+    const enemyId = getEnemyId();
+    
+    // One shot on a random adjacent cell
+    const adjacents = [];
+    for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+            if (gameState.enemyBoard[r][c] === 'unknown') {
+                adjacents.push({row: r, col: c});
+            }
+        }
+    }
+    
+    // Pick 2 random cells
+    for (let i = 0; i < 2 && adjacents.length > 0; i++) {
+        const index = Math.floor(Math.random() * adjacents.length);
+        const target = adjacents.splice(index, 1)[0];
+        
+        // Simulate shot
+        shots.push({
+            row: target.row,
+            col: target.col,
+            isHit: false // Will be determined when processed
+        });
+    }
+    
+    return shots;
 }
 
 function checkShipSunk(row, col) {
@@ -952,6 +1767,9 @@ function checkShipSunk(row, col) {
                     }
                 });
                 
+                // Draw ship outline
+                drawShipOutline(ship.positions, false);
+                
                 updateShipStatus();
                 return ship;
             }
@@ -970,6 +1788,57 @@ function markShipAsSunk(positions, isEnemy) {
             cell.classList.add('sunk');
         }
     });
+    
+    // Draw ship outline
+    drawShipOutline(positions, isEnemy);
+}
+
+function drawShipOutline(positions, isEnemy) {
+    const gridId = isEnemy ? 'enemyGrid' : 'playerGrid';
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    
+    // Calculate bounding box
+    let minRow = 10, maxRow = -1, minCol = 10, maxCol = -1;
+    positions.forEach(pos => {
+        minRow = Math.min(minRow, pos.row);
+        maxRow = Math.max(maxRow, pos.row);
+        minCol = Math.min(minCol, pos.col);
+        maxCol = Math.max(maxCol, pos.col);
+    });
+    
+    // Create outline element
+    const outline = document.createElement('div');
+    outline.className = 'ship-outline';
+    
+    // Calculate position and size
+    const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'));
+    const gap = 2;
+    
+    const left = (minCol + 1) * (cellSize + gap) + 10;
+    const top = (minRow + 1) * (cellSize + gap) + 10;
+    const width = (maxCol - minCol + 1) * (cellSize + gap) - gap;
+    const height = (maxRow - minRow + 1) * (cellSize + gap) - gap;
+    
+    outline.style.left = `${left}px`;
+    outline.style.top = `${top}px`;
+    outline.style.width = `${width}px`;
+    outline.style.height = `${height}px`;
+    
+    grid.appendChild(outline);
+}
+
+function endTurn() {
+    if (!gameState.hasShot && gameState.powerupsUsed === 0) {
+        showNotification('Du musst mindestens eine Aktion ausführen!', 'warning');
+        return;
+    }
+    
+    // Switch turns
+    switchTurn();
+    
+    // Reset powerup usage counter for next turn
+    gameState.powerupsUsed = 0;
 }
 
 function switchTurn() {
@@ -988,10 +1857,12 @@ function updateStats() {
     const shotCountEl = document.getElementById('shotCount');
     const hitCountEl = document.getElementById('hitCount');
     const sunkCountEl = document.getElementById('sunkCount');
+    const mineCountEl = document.getElementById('mineCount');
     
     if (shotCountEl) shotCountEl.textContent = gameState.shots;
     if (hitCountEl) hitCountEl.textContent = gameState.hits;
     if (sunkCountEl) sunkCountEl.textContent = gameState.sunkShips;
+    if (mineCountEl) mineCountEl.textContent = gameState.minesPlaced;
 }
 
 function updateShipStatus() {
@@ -1090,6 +1961,8 @@ function handleGameOver() {
                 <p>Treffer: ${gameState.hits}</p>
                 <p>Trefferquote: ${gameState.shots > 0 ? Math.round((gameState.hits / gameState.shots) * 100) : 0}%</p>
                 <p>Versenkte Schiffe: ${gameState.sunkShips}</p>
+                <p>Minen platziert: ${gameState.minesPlaced}</p>
+                <p>Powerups genutzt: ${gameState.powerupsUsed}</p>
             `;
         }
         
@@ -1112,136 +1985,36 @@ function surrenderGame() {
     }
 }
 
-// Auto-Recommendation System (Always Active)
-function updateRecommendation() {
-    const cheatDisplay = document.getElementById('cheatDisplay');
-    const recommendedShot = document.getElementById('recommendedShot');
+// Radar result listener
+function setupRadarListener() {
+    gameState.lobbyRef.child(`radarResults/${gameState.playerId}`).on('child_added', snapshot => {
+        const result = snapshot.val();
+        displayRadarResult(result);
+    });
+}
+
+function displayRadarResult(result) {
+    const { centerRow, centerCol, count, positions } = result;
     
-    if (!cheatDisplay || !recommendedShot) return;
-    
-    if (gameState.currentTurn !== gameState.playerId) {
-        recommendedShot.textContent = '-';
-        cheatDisplay.style.display = 'none';
-        return;
-    }
-    
-    // Show recommendation when it's player's turn
-    cheatDisplay.style.display = 'block';
-    
-    calculateProbabilityMap();
-    const bestShot = findBestShot();
-    
-    if (bestShot) {
-        const coord = `${String.fromCharCode(65 + bestShot.col)}${bestShot.row + 1}`;
-        recommendedShot.textContent = coord;
-        
-        // Highlight the recommended cell
-        document.querySelectorAll('.recommended').forEach(cell => {
-            cell.classList.remove('recommended');
-        });
-        
-        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${bestShot.row}"][data-col="${bestShot.col}"]`);
+    // Update visual
+    positions.forEach(pos => {
+        const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${pos.row}"][data-col="${pos.col}"]`);
         if (cell) {
-            cell.classList.add('recommended');
-        }
-    } else {
-        recommendedShot.textContent = '-';
-    }
-}
-
-function calculateProbabilityMap() {
-    // Reset probability map
-    gameState.probabilityMap = Array(10).fill(null).map(() => Array(10).fill(0));
-    
-    // For each remaining ship type
-    const remainingShips = gameState.shipTypes.filter((_, index) => {
-        return index >= gameState.sunkShips;
-    });
-    
-    remainingShips.forEach(ship => {
-        // Try all possible positions
-        for (let row = 0; row < 10; row++) {
-            for (let col = 0; col < 10; col++) {
-                // Try horizontal
-                if (canPlaceShipOnEnemyBoard(row, col, ship.size, 'horizontal')) {
-                    for (let i = 0; i < ship.size; i++) {
-                        gameState.probabilityMap[row][col + i]++;
-                    }
-                }
-                
-                // Try vertical
-                if (canPlaceShipOnEnemyBoard(row, col, ship.size, 'vertical')) {
-                    for (let i = 0; i < ship.size; i++) {
-                        gameState.probabilityMap[row + i][col]++;
-                    }
-                }
-            }
+            cell.classList.add('radar-area');
         }
     });
     
-    // Increase probability near hits
-    for (let row = 0; row < 10; row++) {
-        for (let col = 0; col < 10; col++) {
-            if (gameState.enemyBoard[row][col] === 'hit') {
-                // Check adjacent cells
-                const adjacents = [
-                    { r: row - 1, c: col },
-                    { r: row + 1, c: col },
-                    { r: row, c: col - 1 },
-                    { r: row, c: col + 1 }
-                ];
-                
-                adjacents.forEach(adj => {
-                    if (adj.r >= 0 && adj.r < 10 && adj.c >= 0 && adj.c < 10) {
-                        if (gameState.enemyBoard[adj.r][adj.c] === 'unknown') {
-                            gameState.probabilityMap[adj.r][adj.c] += 50;
-                        }
-                    }
-                });
-            }
-        }
-    }
-}
-
-function canPlaceShipOnEnemyBoard(row, col, size, orientation) {
-    for (let i = 0; i < size; i++) {
-        let checkRow = row;
-        let checkCol = col;
-        
-        if (orientation === 'horizontal') {
-            checkCol = col + i;
-        } else {
-            checkRow = row + i;
-        }
-        
-        // Check bounds
-        if (checkRow < 0 || checkRow >= 10 || checkCol < 0 || checkCol >= 10) {
-            return false;
-        }
-        
-        // Check if already shot
-        if (gameState.enemyBoard[checkRow][checkCol] !== 'unknown') {
-            return false;
-        }
+    // Update center cell with count
+    const centerCell = document.querySelector(`#enemyGrid .grid-cell[data-row="${centerRow}"][data-col="${centerCol}"]`);
+    if (centerCell) {
+        centerCell.classList.add('radar-center');
+        centerCell.textContent = count;
     }
     
-    return true;
-}
-
-function findBestShot() {
-    let maxProbability = 0;
-    let bestShot = null;
+    // Store radar scan
+    gameState.radarScans.push({ centerRow, centerCol, count });
     
-    for (let row = 0; row < 10; row++) {
-        for (let col = 0; col < 10; col++) {
-            if (gameState.enemyBoard[row][col] === 'unknown' && gameState.probabilityMap[row][col] > maxProbability) {
-                maxProbability = gameState.probabilityMap[row][col];
-                bestShot = { row, col };
-            }
-        }
-    }
-    
-    return bestShot;
+    showNotification(`Radar-Scan: ${count} Objekte entdeckt!`, 'info');
 }
 
 // Event Listeners
@@ -1249,6 +2022,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize sounds
     initializeSounds();
     preloadSounds();
+    
+    // Settings popup
+    const settingsIcon = document.getElementById('settingsIcon');
+    const closeSettings = document.getElementById('closeSettings');
+    
+    if (settingsIcon) settingsIcon.addEventListener('click', showSettingsPopup);
+    if (closeSettings) closeSettings.addEventListener('click', hideSettingsPopup);
+    
+    // Volume control
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            updateVolume(e.target.value);
+        });
+    }
     
     // Lobby buttons
     const createLobbyBtn = document.getElementById('createLobbyBtn');
@@ -1283,8 +2071,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rotateBtn) rotateBtn.addEventListener('click', rotateShip);
     if (readyBtn) readyBtn.addEventListener('click', setPlayerReady);
     
+    // Powerup buttons
+    const mineBtn = document.getElementById('mineBtn');
+    const radarBtn = document.getElementById('radarBtn');
+    const cannonBtn = document.getElementById('cannonBtn');
+    const torpedoBtn = document.getElementById('torpedoBtn');
+    
+    if (mineBtn) mineBtn.addEventListener('click', () => activatePowerup('mine'));
+    if (radarBtn) radarBtn.addEventListener('click', () => activatePowerup('radar'));
+    if (cannonBtn) cannonBtn.addEventListener('click', () => activatePowerup('cannon'));
+    if (torpedoBtn) torpedoBtn.addEventListener('click', () => activatePowerup('torpedo'));
+    
     // Game buttons
+    const endTurnBtn = document.getElementById('endTurnBtn');
     const surrenderBtn = document.getElementById('surrenderBtn');
+    
+    if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
     if (surrenderBtn) surrenderBtn.addEventListener('click', surrenderGame);
     
     const newGameBtn = document.getElementById('newGameBtn');
@@ -1293,16 +2095,11 @@ document.addEventListener('DOMContentLoaded', () => {
         location.reload();
     });
     
-    // Volume control
-    const volumeSlider = document.getElementById('volumeSlider');
-    if (volumeSlider) {
-        volumeSlider.addEventListener('input', (e) => {
-            updateVolume(e.target.value);
-        });
-    }
-    
     // Initialize connection status
     updateConnectionStatus(false);
+    
+    // Setup radar listener
+    setupRadarListener();
     
     // Handle page unload
     window.addEventListener('beforeunload', () => {
