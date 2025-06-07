@@ -1,25 +1,21 @@
 // Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
-  authDomain: "realtime-database-aktivieren.firebaseapp.com",
-  databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "realtime-database-aktivieren",
-  storageBucket: "realtime-database-aktivieren.appspot.com",
-  messagingSenderId: "921607081725",
-  appId: "1:921607081725:web:7630f400a518ab9507f894",
-  measurementId: "G-TKN9TP77G3"
+    apiKey: "AIzaSyC2Vz48b_VROP3g3JaaMZI4CcEl8neeMuM",
+    authDomain: "realtime-database-aktivieren.firebaseapp.com",
+    databaseURL: "https://realtime-database-aktivieren-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "realtime-database-aktivieren",
+    storageBucket: "realtime-database-aktivieren.firebasestorage.app",
+    messagingSenderId: "921607081725",
+    appId: "1:921607081725:web:7630f400a518ab9507f894",
+    measurementId: "G-TKN9TP77G3"
 };
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Debug Firebase connection
-console.log('Firebase initialized:', firebase.apps.length > 0);
-
-// Test database connection immediately
+// Test database connection
 database.ref('.info/connected').on('value', (snapshot) => {
-    console.log('Firebase connection status:', snapshot.val());
     updateConnectionStatus(snapshot.val() === true);
 });
 
@@ -34,7 +30,7 @@ const gameState = {
     gamePhase: 'waiting',
     currentTurn: null,
     canShootAgain: false,
-    isFirstTurn: true, // Track first turn for sound
+    isFirstTurn: true,
     
     // Ship Configuration
     shipTypes: [
@@ -68,23 +64,17 @@ const gameState = {
     probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
     bestShot: null,
     
-// Audio
-volume: 0.5,
-sounds: {
-    hit: new Audio('sounds/hit.mp3'),
-    miss: new Audio('sounds/miss.mp3'),
-    sunk: new Audio('sounds/sunk.mp3'),
-    turn: new Audio('sounds/turn.mp3')
-} // KEIN Komma, weil dies die letzte Eigenschaft ist
-}; // Hier wird das Objekt gameState korrekt beendet
+    // Audio
+    volume: 0.5,
+    sounds: {
+        hit: new Audio('sounds/hit.mp3'),
+        miss: new Audio('sounds/miss.mp3'),
+        sunk: new Audio('sounds/sunk.mp3'),
+        turn: new Audio('sounds/turn.mp3')
+    }
+};
 
-function preloadSounds() {
-    Object.values(gameState.sounds).forEach(sound => {
-        sound.load();
-    });
-}
-
-// HINZUFÜGEN nach dem gameState Objekt:
+// Initialize sounds with error handling
 function initializeSounds() {
     const soundFiles = {
         hit: 'sounds/hit.mp3',
@@ -99,12 +89,24 @@ function initializeSounds() {
         const audio = new Audio(path);
         audio.volume = gameState.volume;
         
+        // Error handling for missing files
         audio.onerror = () => {
             console.warn(`Sound file not found: ${path}`);
+            // Create silent audio as fallback
+            gameState.sounds[key] = new Audio();
         };
         
         gameState.sounds[key] = audio;
     }
+}
+
+// Preload all sounds
+function preloadSounds() {
+    Object.values(gameState.sounds).forEach(sound => {
+        if (sound.src) {
+            sound.load();
+        }
+    });
 }
 
 // DOM Elements
@@ -117,19 +119,13 @@ const screens = {
 };
 
 // Audio Helper Functions
-function initializeAudio() {
-    // Set volume for all sounds
-    Object.values(gameState.sounds).forEach(sound => {
-        sound.volume = gameState.volume;
-    });
-}
-
 function playSound(soundName) {
     const sound = gameState.sounds[soundName];
     if (sound && sound.readyState >= 2) {
         sound.currentTime = 0;
         sound.volume = gameState.volume;
         
+        // Clone for overlapping sounds
         const clone = sound.cloneNode();
         clone.volume = gameState.volume;
         clone.play().catch(e => console.log('Sound play failed:', e));
@@ -139,7 +135,9 @@ function playSound(soundName) {
 function updateVolume(value) {
     gameState.volume = value / 100;
     Object.values(gameState.sounds).forEach(sound => {
-        sound.volume = gameState.volume;
+        if (sound) {
+            sound.volume = gameState.volume;
+        }
     });
 }
 
@@ -150,7 +148,9 @@ function generateLobbyCode() {
 
 function showScreen(screenName) {
     Object.keys(screens).forEach(name => {
-        screens[name].classList.toggle('active', name === screenName);
+        if (screens[name]) {
+            screens[name].classList.toggle('active', name === screenName);
+        }
     });
     gameState.currentScreen = screenName;
     
@@ -180,18 +180,22 @@ function updateConnectionStatus(connected) {
     const statusDot = document.querySelector('.status-dot');
     const statusText = document.querySelector('.status-text');
     
-    if (connected) {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Verbunden';
-    } else {
-        statusDot.classList.remove('connected');
-        statusText.textContent = 'Offline';
+    if (statusDot && statusText) {
+        if (connected) {
+            statusDot.classList.add('connected');
+            statusText.textContent = 'Verbunden';
+        } else {
+            statusDot.classList.remove('connected');
+            statusText.textContent = 'Offline';
+        }
     }
 }
 
 // Grid Creation Functions
 function createGrid(containerId, isEnemy = false) {
     const container = document.getElementById(containerId);
+    if (!container) return;
+    
     container.innerHTML = '';
     
     // Create header row
@@ -356,6 +360,8 @@ function setupLobbyListeners() {
 
 function updatePlayersList(players) {
     const playersList = document.getElementById('playersList');
+    if (!playersList) return;
+    
     playersList.innerHTML = '';
     
     let index = 0;
@@ -365,7 +371,7 @@ function updatePlayersList(players) {
         playerItem.innerHTML = `
             <span class="player-icon">${id === gameState.playerId ? '👤' : '🎮'}</span>
             <span class="player-name">${player.name} ${id === gameState.playerId ? '(Du)' : ''}</span>
-            ${player.ready ? '<span style="color: var(--secondary-color)">✅ Bereit</span>' : ''}
+            ${player.ready ? '<span style="color: var(--primary-color)">✅ Bereit</span>' : ''}
         `;
         playersList.appendChild(playerItem);
         index++;
@@ -413,13 +419,17 @@ function initializePlacement() {
     
     // Setup placement grid listeners
     const placementGrid = document.getElementById('placementGrid');
-    placementGrid.addEventListener('mouseover', handlePlacementHover);
-    placementGrid.addEventListener('mouseout', clearPlacementPreview);
-    placementGrid.addEventListener('click', handlePlacementClick);
+    if (placementGrid) {
+        placementGrid.addEventListener('mouseover', handlePlacementHover);
+        placementGrid.addEventListener('mouseout', clearPlacementPreview);
+        placementGrid.addEventListener('click', handlePlacementClick);
+    }
 }
 
 function renderAvailableShips() {
     const container = document.getElementById('availableShips');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     gameState.shipTypes.forEach((shipType, index) => {
@@ -544,8 +554,11 @@ function placeShip(row, col) {
     
     // Check if all ships are placed
     if (gameState.placedShips.length === gameState.shipTypes.length) {
-        document.getElementById('readyBtn').disabled = false;
-        showNotification('Alle Schiffe platziert! Klicke auf "Bereit"!', 'success');
+        const readyBtn = document.getElementById('readyBtn');
+        if (readyBtn) {
+            readyBtn.disabled = false;
+        }
+        showNotification('Alle Schiffe platziert! Klicke auf "Ready"!', 'success');
     }
 }
 
@@ -637,7 +650,10 @@ function clearBoard() {
         cell.classList.remove('ship');
     });
     
-    document.getElementById('readyBtn').disabled = true;
+    const readyBtn = document.getElementById('readyBtn');
+    if (readyBtn) {
+        readyBtn.disabled = true;
+    }
     renderAvailableShips();
 }
 
@@ -730,11 +746,11 @@ function updateTurnIndicator() {
     const turnIndicator = document.getElementById('currentPlayer');
     const enemyGrid = document.getElementById('enemyGrid');
     
-    if (!turnIndicator) return;
+    if (!turnIndicator || !enemyGrid) return;
     
     if (gameState.currentTurn === gameState.playerId) {
         turnIndicator.textContent = 'Du bist dran!';
-        turnIndicator.style.color = 'var(--secondary-color)';
+        turnIndicator.style.color = 'var(--primary-color)';
         enemyGrid.classList.add('active');
         enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
@@ -830,7 +846,6 @@ function handleShotResult(result) {
     
     if (isHit) {
         gameState.hits++;
-        addToGameLog(`Treffer auf ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
         
         // Flash green border on hit
         document.body.classList.add('flash-success');
@@ -838,7 +853,6 @@ function handleShotResult(result) {
         
         if (isSunk) {
             gameState.sunkShips++;
-            addToGameLog(`${shipType} versenkt!`, 'sunk');
             markShipAsSunk(result.shipPositions, true);
             
             // Track which enemy ship was sunk
@@ -864,7 +878,6 @@ function handleShotResult(result) {
         showNotification('Treffer! Du darfst nochmal schießen!', 'success');
         updateRecommendation();
     } else {
-        addToGameLog(`Verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
         playSound('miss');
         gameState.canShootAgain = false;
         // Switch turns only on miss
@@ -892,7 +905,9 @@ function handleIncomingShot(shot) {
     if (cellContent === 'ship') {
         // Hit
         gameState.myBoard[row][col] = 'hit';
-        cell.classList.add('hit');
+        if (cell) {
+            cell.classList.add('hit');
+        }
         result.isHit = true;
         
         // Flash red border when hit
@@ -905,16 +920,13 @@ function handleIncomingShot(shot) {
             result.isSunk = true;
             result.shipType = sunkShip.type;
             result.shipPositions = sunkShip.positions;
-            addToGameLog(`Dein ${sunkShip.type} wurde versenkt!`, 'sunk');
         }
-        
-        addToGameLog(`Gegner trifft ${String.fromCharCode(65 + col)}${row + 1}!`, 'hit');
     } else {
         // Miss
         gameState.myBoard[row][col] = 'miss';
-        cell.classList.add('miss');
-        
-        addToGameLog(`Gegner verfehlt ${String.fromCharCode(65 + col)}${row + 1}`, 'miss');
+        if (cell) {
+            cell.classList.add('miss');
+        }
     }
     
     // Send result back
@@ -973,9 +985,13 @@ function switchTurn() {
 }
 
 function updateStats() {
-    document.getElementById('shotCount').textContent = gameState.shots;
-    document.getElementById('hitCount').textContent = gameState.hits;
-    document.getElementById('sunkCount').textContent = gameState.sunkShips;
+    const shotCountEl = document.getElementById('shotCount');
+    const hitCountEl = document.getElementById('hitCount');
+    const sunkCountEl = document.getElementById('sunkCount');
+    
+    if (shotCountEl) shotCountEl.textContent = gameState.shots;
+    if (hitCountEl) hitCountEl.textContent = gameState.hits;
+    if (sunkCountEl) sunkCountEl.textContent = gameState.sunkShips;
 }
 
 function updateShipStatus() {
@@ -1060,17 +1076,22 @@ function handleGameOver() {
         document.body.classList.remove('player-turn', 'enemy-turn');
         document.body.classList.add('victory');
         
-        document.getElementById('winnerIcon').textContent = isWinner ? '🏆' : '😢';
-        document.getElementById('winnerText').textContent = isWinner ? 'Du hast gewonnen!' : 'Du hast verloren!';
+        const winnerIcon = document.getElementById('winnerIcon');
+        const winnerText = document.getElementById('winnerText');
+        
+        if (winnerIcon) winnerIcon.textContent = isWinner ? '🏆' : '😢';
+        if (winnerText) winnerText.textContent = isWinner ? 'Du hast gewonnen!' : 'Du hast verloren!';
         
         // Show final stats
         const finalStats = document.getElementById('finalStats');
-        finalStats.innerHTML = `
-            <p>Schüsse abgegeben: ${gameState.shots}</p>
-            <p>Treffer: ${gameState.hits}</p>
-            <p>Trefferquote: ${gameState.shots > 0 ? Math.round((gameState.hits / gameState.shots) * 100) : 0}%</p>
-            <p>Versenkte Schiffe: ${gameState.sunkShips}</p>
-        `;
+        if (finalStats) {
+            finalStats.innerHTML = `
+                <p>Schüsse abgegeben: ${gameState.shots}</p>
+                <p>Treffer: ${gameState.hits}</p>
+                <p>Trefferquote: ${gameState.shots > 0 ? Math.round((gameState.hits / gameState.shots) * 100) : 0}%</p>
+                <p>Versenkte Schiffe: ${gameState.sunkShips}</p>
+            `;
+        }
         
         showScreen('gameover');
     });
@@ -1091,36 +1112,28 @@ function surrenderGame() {
     }
 }
 
-function addToGameLog(message, type) {
-    const log = document.getElementById('gameLog');
-    if (!log) return; // Log might not exist anymore
-    
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${type}`;
-    entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
-}
-
 // Auto-Recommendation System (Always Active)
 function updateRecommendation() {
     const cheatDisplay = document.getElementById('cheatDisplay');
+    const recommendedShot = document.getElementById('recommendedShot');
+    
+    if (!cheatDisplay || !recommendedShot) return;
     
     if (gameState.currentTurn !== gameState.playerId) {
-        document.getElementById('recommendedShot').textContent = '-';
-        if (cheatDisplay) cheatDisplay.style.display = 'none';
+        recommendedShot.textContent = '-';
+        cheatDisplay.style.display = 'none';
         return;
     }
     
     // Show recommendation when it's player's turn
-    if (cheatDisplay) cheatDisplay.style.display = 'block';
+    cheatDisplay.style.display = 'block';
     
     calculateProbabilityMap();
     const bestShot = findBestShot();
     
     if (bestShot) {
         const coord = `${String.fromCharCode(65 + bestShot.col)}${bestShot.row + 1}`;
-        document.getElementById('recommendedShot').textContent = coord;
+        recommendedShot.textContent = coord;
         
         // Highlight the recommended cell
         document.querySelectorAll('.recommended').forEach(cell => {
@@ -1132,7 +1145,7 @@ function updateRecommendation() {
             cell.classList.add('recommended');
         }
     } else {
-        document.getElementById('recommendedShot').textContent = '-';
+        recommendedShot.textContent = '-';
     }
 }
 
@@ -1233,45 +1246,60 @@ function findBestShot() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    initializeSounds();  // NEU hinzufügen
-    preloadSounds();     // NEU hinzufügen
+    // Initialize sounds
+    initializeSounds();
+    preloadSounds();
     
-    // Rest des bestehenden Codes...
     // Lobby buttons
-    document.getElementById('createLobbyBtn').addEventListener('click', createLobby);
-    document.getElementById('joinLobbyBtn').addEventListener('click', joinLobby);
-    document.getElementById('leaveLobbyBtn').addEventListener('click', leaveLobby);
+    const createLobbyBtn = document.getElementById('createLobbyBtn');
+    const joinLobbyBtn = document.getElementById('joinLobbyBtn');
+    const leaveLobbyBtn = document.getElementById('leaveLobbyBtn');
+    
+    if (createLobbyBtn) createLobbyBtn.addEventListener('click', createLobby);
+    if (joinLobbyBtn) joinLobbyBtn.addEventListener('click', joinLobby);
+    if (leaveLobbyBtn) leaveLobbyBtn.addEventListener('click', leaveLobby);
     
     // Copy lobby code
-    document.getElementById('copyLobbyCode').addEventListener('click', () => {
-        const code = document.getElementById('lobbyCodeDisplay').textContent;
-        navigator.clipboard.writeText(code).then(() => {
-            showNotification('Code kopiert!', 'success');
-        }).catch(() => {
-            showNotification('Kopieren fehlgeschlagen', 'error');
+    const copyLobbyCode = document.getElementById('copyLobbyCode');
+    if (copyLobbyCode) {
+        copyLobbyCode.addEventListener('click', () => {
+            const code = document.getElementById('lobbyCodeDisplay').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showNotification('Code kopiert!', 'success');
+            }).catch(() => {
+                showNotification('Kopieren fehlgeschlagen', 'error');
+            });
         });
-    });
+    }
     
     // Placement buttons
-    document.getElementById('randomPlaceBtn').addEventListener('click', randomPlacement);
-    document.getElementById('clearBoardBtn').addEventListener('click', clearBoard);
-    document.getElementById('rotateBtn').addEventListener('click', rotateShip);
-    document.getElementById('readyBtn').addEventListener('click', setPlayerReady);
+    const randomPlaceBtn = document.getElementById('randomPlaceBtn');
+    const clearBoardBtn = document.getElementById('clearBoardBtn');
+    const rotateBtn = document.getElementById('rotateBtn');
+    const readyBtn = document.getElementById('readyBtn');
+    
+    if (randomPlaceBtn) randomPlaceBtn.addEventListener('click', randomPlacement);
+    if (clearBoardBtn) clearBoardBtn.addEventListener('click', clearBoard);
+    if (rotateBtn) rotateBtn.addEventListener('click', rotateShip);
+    if (readyBtn) readyBtn.addEventListener('click', setPlayerReady);
     
     // Game buttons
-    document.getElementById('surrenderBtn')?.addEventListener('click', surrenderGame);
-    document.getElementById('newGameBtn').addEventListener('click', () => {
+    const surrenderBtn = document.getElementById('surrenderBtn');
+    if (surrenderBtn) surrenderBtn.addEventListener('click', surrenderGame);
+    
+    const newGameBtn = document.getElementById('newGameBtn');
+    if (newGameBtn) newGameBtn.addEventListener('click', () => {
         leaveLobby();
         location.reload();
     });
     
     // Volume control
-    document.getElementById('volumeSlider')?.addEventListener('input', (e) => {
-        updateVolume(e.target.value);
-    });
-    
-    // Initialize audio
-    initializeAudio();
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            updateVolume(e.target.value);
+        });
+    }
     
     // Initialize connection status
     updateConnectionStatus(false);
