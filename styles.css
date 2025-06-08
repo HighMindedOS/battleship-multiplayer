@@ -1,10 +1,11 @@
 /* CSS Variables */
 :root {
-    --primary-color: #ff8800;  /* Changed from green to orange */
-    --secondary-color: #ff6600;
+    --green-color: #00ff41;
+    --green-secondary: #00d837;
+    --orange-color: #ff8800;
+    --orange-secondary: #ff6600;
     --danger-color: #ff4444;
     --warning-color: #ffaa00;
-    --orange-color: #ff8800;
     --purple-color: #9b59b6;
     --bg-dark: #0a0e27;
     --bg-darker: #050714;
@@ -12,11 +13,10 @@
     --text-secondary: #a0a0a0;
     --border-color: #ffffff;
     --glass-bg: rgba(0, 0, 0, 0.85);
-    --board-size: min(90vh, 700px);
     --cell-size: 38px;
+    --cell-size-large: 48px;
     --grid-bg: rgba(0, 20, 40, 0.5);
     --border-thickness: 15px;
-    --content-padding: 0px;
 }
 
 /* Base Styles */
@@ -51,9 +51,38 @@ body {
     display: none;
 }
 
+/* Green Elements Class */
+.green-element {
+    color: var(--green-color) !important;
+    border-color: var(--green-color) !important;
+}
+
+.green-element:hover {
+    background: rgba(0, 255, 65, 0.1) !important;
+}
+
+/* Orange Menu Elements Class */
+.orange-menu {
+    color: var(--orange-color) !important;
+    border-color: var(--orange-color) !important;
+}
+
+button.orange-menu {
+    background: rgba(255, 136, 0, 0.1) !important;
+    border: 2px solid var(--orange-color) !important;
+}
+
+button.orange-menu:hover {
+    background: rgba(255, 136, 0, 0.2) !important;
+}
+
+input.orange-menu {
+    border: 2px solid var(--orange-color) !important;
+}
+
 /* Border states only during game */
 body.in-game.player-turn {
-    border-color: var(--primary-color);
+    border-color: var(--green-color);
 }
 
 body.in-game.enemy-turn {
@@ -65,15 +94,15 @@ body.in-game.victory {
 }
 
 /* Edge card border states - match main border */
-body.in-game.player-turn .edge-card {
-    border-color: var(--primary-color);
+body.in-game.player-turn .game-card {
+    border-color: var(--green-color);
 }
 
-body.in-game.enemy-turn .edge-card {
+body.in-game.enemy-turn .game-card {
     border-color: var(--danger-color);
 }
 
-body.in-game.victory .edge-card {
+body.in-game.victory .game-card {
     border-color: var(--warning-color);
 }
 
@@ -84,7 +113,7 @@ body.in-game.victory .edge-card {
 
 @keyframes flash-green {
     0%, 100% { border-color: inherit; }
-    50% { border-color: var(--primary-color); }
+    50% { border-color: var(--green-color); }
 }
 
 body.in-game.flash-hit {
@@ -173,7 +202,7 @@ body.in-game.flash-success {
 }
 
 .popup-content h2 {
-    color: var(--primary-color);
+    color: var(--orange-color);
     margin-bottom: 20px;
 }
 
@@ -201,7 +230,7 @@ body.in-game.flash-success {
 }
 
 .status-dot.connected {
-    background-color: var(--primary-color);
+    background-color: var(--green-color);
 }
 
 #volumeValue {
@@ -240,7 +269,7 @@ body.in-game.flash-success {
     appearance: none;
     width: 16px;
     height: 16px;
-    background: var(--primary-color);
+    background: var(--orange-color);
     border-radius: 50%;
     cursor: pointer;
 }
@@ -298,16 +327,10 @@ body.in-game.flash-success {
     width: 300px;
 }
 
-.lobby-card h2 {
-    margin-bottom: 20px;
-    color: var(--primary-color);
-}
-
 .lobby-card input {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
-    border: 2px solid var(--primary-color);
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.5);
     color: var(--text-primary);
@@ -317,17 +340,13 @@ body.in-game.flash-success {
 .lobby-card button {
     width: 100%;
     padding: 12px;
-    border: 2px solid var(--primary-color);
     border-radius: 8px;
-    background: rgba(255, 136, 0, 0.1);
-    color: var(--primary-color);
     font-size: 18px;
     cursor: pointer;
     transition: all 0.3s;
 }
 
 .lobby-card button:hover {
-    background: rgba(255, 136, 0, 0.2);
     transform: translateY(-2px);
 }
 
@@ -346,7 +365,6 @@ body.in-game.flash-success {
     padding: 20px;
     margin: 20px 0;
     background: rgba(0, 0, 0, 0.5);
-    border: 2px solid var(--primary-color);
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s;
@@ -359,7 +377,6 @@ body.in-game.flash-success {
 
 #lobbyCodeDisplay {
     font-size: 2.5em;
-    color: var(--primary-color);
     font-weight: bold;
     letter-spacing: 2px;
 }
@@ -429,6 +446,11 @@ body.in-game.flash-success {
     justify-content: center;
 }
 
+/* Larger grid for placement */
+.placement-grid {
+    --cell-size: var(--cell-size-large) !important;
+}
+
 .available-ships {
     margin-bottom: 20px;
     flex: 1;
@@ -438,18 +460,18 @@ body.in-game.flash-success {
 .ship-item {
     padding: 15px;
     margin: 10px 0;
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--green-color);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
 }
 
 .ship-item:hover:not(.placed) {
-    background: rgba(255, 136, 0, 0.1);
+    background: rgba(0, 255, 65, 0.1);
 }
 
 .ship-item.selected {
-    background: rgba(255, 136, 0, 0.2);
+    background: rgba(0, 255, 65, 0.2);
 }
 
 .ship-item.placed {
@@ -466,7 +488,7 @@ body.in-game.flash-success {
 .ship-cell {
     width: 20px;
     height: 20px;
-    background: var(--primary-color);
+    background: var(--green-color);
     border: 1px solid var(--bg-dark);
 }
 
@@ -564,12 +586,7 @@ body.in-game.flash-success {
 }
 
 .game-sidebar h3 {
-    color: var(--primary-color);
     margin-bottom: 15px;
-}
-
-.game-sidebar.right h3 {
-    color: var(--danger-color);
 }
 
 /* Energy Display */
@@ -637,7 +654,6 @@ body.in-game.flash-success {
 
 /* Ships Display */
 .ships-status-header {
-    color: var(--primary-color);
     margin-bottom: 10px;
     font-weight: bold;
 }
@@ -653,7 +669,7 @@ body.in-game.flash-success {
 .ship-display-item {
     padding: 15px;
     margin: 10px 0;
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--green-color);
     border-radius: 8px;
     transition: all 0.3s;
 }
@@ -677,7 +693,7 @@ body.in-game.flash-success {
 .ship-display-cell {
     width: 20px;
     height: 20px;
-    background: var(--primary-color);
+    background: var(--green-color);
     border: 1px solid var(--bg-dark);
 }
 
@@ -695,9 +711,36 @@ body.in-game.flash-success {
     border-color: #444;
 }
 
-/* Surrender Button */
-.surrender-btn {
+/* Bottom Buttons */
+.bottom-buttons {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.end-turn-btn {
+    padding: 15px;
+    background: rgba(0, 255, 65, 0.1);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s;
+    border: 2px solid var(--green-color);
+}
+
+.end-turn-btn:hover:not(:disabled) {
+    background: rgba(0, 255, 65, 0.2);
+    transform: translateY(-2px);
+}
+
+.end-turn-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.surrender-btn {
     padding: 15px;
     border: 2px solid var(--danger-color);
     background: rgba(255, 68, 68, 0.1);
@@ -725,25 +768,55 @@ body.in-game.flash-success {
 
 .boards-container {
     display: flex;
-    flex-direction: column;
     gap: 30px;
     align-items: center;
+    position: relative;
+    transition: all 0.5s ease;
 }
 
-.board-section h3 {
+/* Board Wrappers */
+.board-wrapper {
+    transition: all 0.5s ease;
+}
+
+.board-title {
     margin-bottom: 15px;
-    color: var(--primary-color);
     text-align: center;
 }
 
-.board-section:first-child h3 {
+.enemy-title {
     color: var(--danger-color);
 }
 
-.enemy-board {
-    position: relative;
+/* Dynamic Board Sizing */
+.board-wrapper.active {
+    transform: scale(1.3);
+    z-index: 10;
 }
 
+.board-wrapper.inactive {
+    transform: scale(0.8);
+    opacity: 0.7;
+}
+
+/* Switch boards when player turn */
+body.in-game.player-turn .enemy-board-wrapper {
+    order: 1;
+}
+
+body.in-game.player-turn .player-board-wrapper {
+    order: 2;
+}
+
+body.in-game.enemy-turn .enemy-board-wrapper {
+    order: 2;
+}
+
+body.in-game.enemy-turn .player-board-wrapper {
+    order: 1;
+}
+
+/* Enemy board active state */
 .enemy-board.active {
     box-shadow: 0 0 0 3px var(--danger-color);
 }
@@ -766,30 +839,6 @@ body.in-game.flash-success {
     margin: 10px 0;
 }
 
-/* End Turn Button */
-.end-turn-btn {
-    margin-top: 20px;
-    padding: 15px;
-    border: 2px solid var(--primary-color);
-    background: rgba(255, 136, 0, 0.1);
-    color: var(--primary-color);
-    cursor: pointer;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    transition: all 0.3s;
-}
-
-.end-turn-btn:hover:not(:disabled) {
-    background: rgba(255, 136, 0, 0.2);
-    transform: translateY(-2px);
-}
-
-.end-turn-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* Game Grid */
 .game-grid {
     display: grid;
@@ -798,7 +847,7 @@ body.in-game.flash-success {
     gap: 2px;
     background: var(--grid-bg);
     padding: 10px;
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--green-color);
     border-radius: 10px;
     width: auto;
     margin: 0 auto;
@@ -833,12 +882,12 @@ body.in-game.flash-success {
 }
 
 .grid-cell:not(.grid-header):hover {
-    background: rgba(255, 136, 0, 0.2);
+    background: rgba(0, 255, 65, 0.2);
 }
 
 .grid-cell.ship {
-    background: var(--primary-color);
-    border-color: var(--secondary-color);
+    background: var(--green-color);
+    border-color: var(--green-secondary);
 }
 
 .grid-cell.hit {
@@ -873,6 +922,7 @@ body.in-game.flash-success {
     font-size: 20px;
 }
 
+/* Mine stays purple after trigger */
 .grid-cell.mine-triggered {
     background: var(--purple-color);
     border-color: var(--purple-color);
@@ -882,19 +932,31 @@ body.in-game.flash-success {
     content: '💣';
     position: absolute;
     font-size: 20px;
+    z-index: 2;
 }
 
-/* Radar Cells */
+/* Radar Cells - Always visible */
 .grid-cell.radar-area {
-    background: rgba(155, 89, 182, 0.2);
-    border-color: var(--purple-color);
+    background: rgba(155, 89, 182, 0.3) !important;
+    border-color: var(--purple-color) !important;
 }
 
 .grid-cell.radar-center {
-    background: var(--purple-color);
-    color: white;
+    background: var(--purple-color) !important;
+    color: white !important;
     font-weight: bold;
     font-size: 18px;
+    z-index: 5;
+}
+
+/* Ensure radar stays visible over other states */
+.grid-cell.radar-center::before {
+    content: attr(data-radar-count);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
 }
 
 /* Sunk Ships */
@@ -918,7 +980,7 @@ body.in-game.flash-success {
 }
 
 .grid-cell.preview {
-    background: rgba(255, 136, 0, 0.3);
+    background: rgba(0, 255, 65, 0.3);
 }
 
 .grid-cell.invalid {
@@ -936,7 +998,7 @@ body.in-game.flash-success {
     border-color: var(--warning-color);
 }
 
-/* Shot Animations */
+/* Shot Animations - Visible on all grids */
 @keyframes waveAnimation {
     0% {
         box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.8);
@@ -998,7 +1060,6 @@ body.in-game.flash-success {
 #winnerText {
     font-size: 2.5em;
     margin-bottom: 30px;
-    color: var(--primary-color);
 }
 
 .final-stats {
@@ -1011,17 +1072,13 @@ body.in-game.flash-success {
 
 #newGameBtn {
     padding: 12px 30px;
-    border: 2px solid var(--primary-color);
     border-radius: 8px;
-    background: rgba(255, 136, 0, 0.1);
-    color: var(--primary-color);
     font-size: 18px;
     cursor: pointer;
     transition: all 0.3s;
 }
 
 #newGameBtn:hover {
-    background: rgba(255, 136, 0, 0.2);
     transform: translateY(-2px);
 }
 
@@ -1057,8 +1114,8 @@ body.in-game.flash-success {
 }
 
 .notification.success {
-    background: rgba(255, 136, 0, 0.2);
-    border-color: var(--primary-color);
+    background: rgba(0, 255, 65, 0.2);
+    border-color: var(--green-color);
 }
 
 .notification.warning {
@@ -1097,6 +1154,7 @@ button:hover {
 @media (max-width: 1400px) {
     :root {
         --cell-size: 32px;
+        --cell-size-large: 40px;
     }
     
     .game-sidebar {
@@ -1111,6 +1169,7 @@ button:hover {
 @media (max-width: 1200px) {
     :root {
         --cell-size: 28px;
+        --cell-size-large: 35px;
     }
     
     .powerup-btn span:not(.powerup-icon) {
@@ -1125,6 +1184,7 @@ button:hover {
 @media (max-width: 1000px) {
     :root {
         --cell-size: 25px;
+        --cell-size-large: 30px;
     }
     
     .game-sidebar {
@@ -1137,5 +1197,9 @@ button:hover {
     
     .stat-item {
         font-size: 14px;
+    }
+    
+    .board-wrapper.active {
+        transform: scale(1.2);
     }
 }
