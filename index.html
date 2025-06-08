@@ -49,17 +49,17 @@
             <div class="lobby-sections">
                 <!-- Create Game -->
                 <div class="lobby-card">
-                    <h2>🔗 Neues Spiel erstellen</h2>
-                    <input type="text" id="playerName" placeholder="Dein Name" maxlength="20">
-                    <button id="createLobbyBtn">Lobby erstellen</button>
+                    <h2 class="orange-menu">🔗 Neues Spiel erstellen</h2>
+                    <input type="text" id="playerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
+                    <button id="createLobbyBtn" class="orange-menu">Lobby erstellen</button>
                 </div>
 
                 <!-- Join Game -->
                 <div class="lobby-card">
-                    <h2>🔌 Einem Spiel beitreten</h2>
-                    <input type="text" id="joinPlayerName" placeholder="Dein Name" maxlength="20">
-                    <input type="text" id="lobbyCode" placeholder="Lobby Code" maxlength="6">
-                    <button id="joinLobbyBtn">Beitreten</button>
+                    <h2 class="orange-menu">🔌 Einem Spiel beitreten</h2>
+                    <input type="text" id="joinPlayerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
+                    <input type="text" id="lobbyCode" class="orange-menu" placeholder="Lobby Code" maxlength="6">
+                    <button id="joinLobbyBtn" class="orange-menu">Beitreten</button>
                 </div>
             </div>
         </div>
@@ -69,8 +69,8 @@
             <div class="waiting-content">
                 <h2>Lobby</h2>
                 
-                <div class="lobby-code-box" id="copyLobbyCode">
-                    <div id="lobbyCodeDisplay"></div>
+                <div class="lobby-code-box orange-menu" id="copyLobbyCode">
+                    <div id="lobbyCodeDisplay" class="orange-menu"></div>
                     <div class="copy-hint">Klicken zum Kopieren</div>
                 </div>
                 
@@ -86,7 +86,7 @@
         <div id="placementScreen" class="screen">
             <div class="placement-container">
                 <div class="placement-left edge-card">
-                    <h3>Verfügbare Schiffe</h3>
+                    <h3 class="green-element">Verfügbare Schiffe</h3>
                     <div id="availableShips" class="available-ships">
                         <!-- Ships will be added dynamically -->
                     </div>
@@ -103,7 +103,7 @@
                 
                 <div class="placement-center">
                     <div class="placement-grid-wrapper">
-                        <div id="placementGrid" class="game-grid"></div>
+                        <div id="placementGrid" class="game-grid placement-grid"></div>
                     </div>
                 </div>
             </div>
@@ -113,7 +113,7 @@
         <div id="gameScreen" class="screen">
             <div class="game-layout">
                 <!-- Left: Player Controls -->
-                <div class="game-sidebar left edge-card">
+                <div class="game-sidebar left edge-card game-card">
                     <!-- Energy Display -->
                     <div class="energy-display">
                         <span class="energy-icon">⚡</span>
@@ -122,7 +122,7 @@
                     
                     <!-- Powerups -->
                     <div class="powerups-section">
-                        <h3>Powerups</h3>
+                        <h3 class="green-element">Powerups</h3>
                         <div class="powerup-buttons">
                             <button class="powerup-btn" id="mineBtn" data-cost="2">
                                 <span class="powerup-icon">💣</span>
@@ -144,31 +144,35 @@
                     </div>
                     
                     <!-- Ships Status -->
-                    <div class="ships-status-header">Deine Schiffe</div>
+                    <div class="ships-status-header green-element">Deine Schiffe</div>
                     <div id="playerShipsStatus" class="ships-display"></div>
                     
-                    <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
+                    <!-- Bottom Buttons -->
+                    <div class="bottom-buttons">
+                        <button id="endTurnBtn" class="end-turn-btn green-element" disabled>Zug beenden</button>
+                        <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
+                    </div>
                 </div>
 
                 <!-- Center: Game Boards -->
                 <div class="game-center">
-                    <div class="boards-container">
-                        <!-- Enemy Board (Top) -->
-                        <div class="board-section">
-                            <h3 id="enemyName">Gegner</h3>
+                    <div class="boards-container" id="boardsContainer">
+                        <!-- Enemy Board -->
+                        <div class="board-wrapper enemy-board-wrapper" id="enemyBoardWrapper">
+                            <h3 id="enemyName" class="board-title enemy-title">Gegner</h3>
                             <div id="enemyGrid" class="game-grid enemy-board"></div>
                         </div>
                         
-                        <!-- Player Board (Bottom) -->
-                        <div class="board-section">
-                            <h3>Dein Feld</h3>
-                            <div id="playerGrid" class="game-grid"></div>
+                        <!-- Player Board -->
+                        <div class="board-wrapper player-board-wrapper" id="playerBoardWrapper">
+                            <h3 class="board-title player-title green-element">Dein Feld</h3>
+                            <div id="playerGrid" class="game-grid player-board"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right: Stats & Turn Control -->
-                <div class="game-sidebar right edge-card">
+                <!-- Right: Stats & Enemy Ships -->
+                <div class="game-sidebar right edge-card game-card">
                     <!-- Enemy Ships -->
                     <div class="ships-status-header enemy-ships-header">Gegner Schiffe</div>
                     <div id="enemyShipsStatus" class="ships-display"></div>
@@ -193,9 +197,6 @@
                             <span id="mineCount">0</span>
                         </div>
                     </div>
-                    
-                    <!-- End Turn Button -->
-                    <button id="endTurnBtn" class="end-turn-btn" disabled>Zug beenden</button>
                 </div>
             </div>
         </div>
@@ -204,9 +205,9 @@
         <div id="gameOverScreen" class="screen">
             <div class="gameover-content">
                 <div id="winnerIcon" class="winner-icon"></div>
-                <h1 id="winnerText"></h1>
+                <h1 id="winnerText" class="orange-menu"></h1>
                 <div id="finalStats" class="final-stats"></div>
-                <button id="newGameBtn">Neues Spiel</button>
+                <button id="newGameBtn" class="orange-menu">Neues Spiel</button>
             </div>
         </div>
     </div>
