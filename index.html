@@ -13,13 +13,13 @@
     </video>
     <div class="glass-overlay"></div>
 
+    <!-- Settings Icon (Top Right) -->
+    <div class="settings-icon" id="settingsIcon">
+        <img src="opt.ico" alt="Settings" width="32" height="32">
+    </div>
+
     <!-- Game Container -->
     <div class="game-container">
-        <!-- Settings Icon (Bottom Right) -->
-        <div class="settings-icon" id="settingsIcon">
-            <img src="opt.ico" alt="Settings" width="32" height="32">
-        </div>
-
         <!-- Settings Popup -->
         <div id="settingsPopup" class="popup-overlay">
             <div class="popup-content">
@@ -46,17 +46,17 @@
                 <img src="logo.png" alt="Battleship Multiplayer" class="game-logo">
             </div>
             
-            <div class="lobby-sections">
+            <div class="lobby-container">
                 <!-- Create Game -->
-                <div class="lobby-card">
-                    <h2 class="orange-menu">Neues Spiel erstellen</h2>
+                <div class="lobby-card left-card">
+                    <h2 class="orange-menu">🔗 Neues Spiel erstellen</h2>
                     <input type="text" id="playerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
                     <button id="createLobbyBtn" class="orange-menu">Lobby erstellen</button>
                 </div>
 
                 <!-- Join Game -->
-                <div class="lobby-card">
-                    <h2 class="orange-menu">Einem Spiel beitreten</h2>
+                <div class="lobby-card right-card">
+                    <h2 class="orange-menu">🔌 Einem Spiel beitreten</h2>
                     <input type="text" id="joinPlayerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
                     <input type="text" id="lobbyCode" class="orange-menu" placeholder="Lobby Code" maxlength="6">
                     <button id="joinLobbyBtn" class="orange-menu">Beitreten</button>
@@ -147,24 +147,21 @@
                     <div class="ships-status-header green-element">Deine Schiffe</div>
                     <div id="playerShipsStatus" class="ships-display"></div>
                     
-                    <!-- Bottom Buttons -->
-                    <div class="bottom-buttons">
-                        <button id="endTurnBtn" class="end-turn-btn green-element" disabled>Zug beenden</button>
-                        <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
-                    </div>
+                    <!-- Surrender Button -->
+                    <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
                 </div>
 
                 <!-- Center: Game Boards -->
                 <div class="game-center">
-                    <div class="boards-container" id="boardsContainer">
-                        <!-- Enemy Board -->
-                        <div class="board-wrapper enemy-board-wrapper" id="enemyBoardWrapper">
+                    <div class="boards-split-container">
+                        <!-- Enemy Board (Top) -->
+                        <div class="board-section enemy-section">
                             <h3 id="enemyName" class="board-title enemy-title">Gegner</h3>
                             <div id="enemyGrid" class="game-grid enemy-board"></div>
                         </div>
                         
-                        <!-- Player Board -->
-                        <div class="board-wrapper player-board-wrapper" id="playerBoardWrapper">
+                        <!-- Player Board (Bottom) -->
+                        <div class="board-section player-section">
                             <h3 class="board-title player-title green-element">Dein Feld</h3>
                             <div id="playerGrid" class="game-grid player-board"></div>
                         </div>
@@ -197,6 +194,9 @@
                             <span id="mineCount">0</span>
                         </div>
                     </div>
+                    
+                    <!-- End Turn Button (at bottom of right card) -->
+                    <button id="endTurnBtn" class="end-turn-btn green-element" disabled>Zug beenden</button>
                 </div>
             </div>
         </div>
