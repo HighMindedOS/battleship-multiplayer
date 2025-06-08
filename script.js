@@ -1166,8 +1166,6 @@ function updatePlayerBoard() {
 function updateTurnIndicator() {
     const enemyGrid = document.getElementById('enemyGrid');
     const endTurnBtn = document.getElementById('endTurnBtn');
-    const enemyBoardWrapper = document.getElementById('enemyBoardWrapper');
-    const playerBoardWrapper = document.getElementById('playerBoardWrapper');
     
     if (!enemyGrid || !endTurnBtn) return;
     
@@ -1191,12 +1189,6 @@ function updateTurnIndicator() {
         document.body.classList.add('player-turn');
         document.body.classList.remove('enemy-turn');
         
-        // Make enemy board active and large
-        enemyBoardWrapper.classList.add('active');
-        enemyBoardWrapper.classList.remove('inactive');
-        playerBoardWrapper.classList.add('inactive');
-        playerBoardWrapper.classList.remove('active');
-        
         // Play turn sound
         playSound('turn');
     } else {
@@ -1208,12 +1200,6 @@ function updateTurnIndicator() {
         // Update body border for enemy turn
         document.body.classList.add('enemy-turn');
         document.body.classList.remove('player-turn');
-        
-        // Make player board active and large
-        playerBoardWrapper.classList.add('active');
-        playerBoardWrapper.classList.remove('inactive');
-        enemyBoardWrapper.classList.add('inactive');
-        enemyBoardWrapper.classList.remove('active');
     }
     
     updatePowerupButtons();
@@ -1557,7 +1543,7 @@ function createTorpedoWave(row, col, direction) {
 }
 
 function handleShotResult(result) {
-    const { row, col, isHit, isSunk, shipType, isMineTrigger, mineShots, type } = result;
+    const { row, col, isHit, isSunk, shipType, isMineTrigger, mineShots, type, isMineRetaliation } = result;
     
     // Update enemy board
     gameState.enemyBoard[row][col] = isHit ? 'hit' : 'miss';
@@ -1607,8 +1593,8 @@ function handleShotResult(result) {
             playSound('hit');
         }
         
-        // Handle extra shot for normal shots only
-        if (type === 'normal') {
+        // Handle extra shot for normal shots only (not for mine retaliation)
+        if (type === 'normal' && !isMineRetaliation) {
             gameState.hasShot = false;
             gameState.waitingForExtraShot = true;
             enableEnemyGrid(true);
@@ -1616,32 +1602,30 @@ function handleShotResult(result) {
         } else {
             // Enable end turn button after powerup hit
             const endTurnBtn = document.getElementById('endTurnBtn');
-            if (endTurnBtn) {
+            if (endTurnBtn && !isMineRetaliation) {
                 endTurnBtn.disabled = false;
             }
         }
     } else {
         playSound('miss');
         
-        // Enable end turn button after miss
+        // Enable end turn button after miss (not for mine retaliation)
         const endTurnBtn = document.getElementById('endTurnBtn');
-        if (endTurnBtn) {
+        if (endTurnBtn && !isMineRetaliation) {
             endTurnBtn.disabled = false;
         }
     }
     
     // Handle mine trigger
-    if (isMineTrigger && mineShots) {
-        showNotification('Mine ausgelöst! Zusätzliche Schüsse werden abgefeuert...', 'warning');
+    if (isMineTrigger) {
+        showNotification('Mine ausgelöst!', 'warning');
         gameState.minesHit++;
         
         // Mark mine as triggered (keep it visible)
-        gameState.enemyMines.push({row, col});
-        
-        // Process additional mine shots with delay
-        setTimeout(() => {
-            processMineShots(mineShots);
-        }, 1000);
+        const mineCell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
+        if (mineCell) {
+            mineCell.classList.add('mine-triggered');
+        }
     }
     
     updateStats();
