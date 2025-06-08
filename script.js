@@ -31,6 +31,7 @@ const gameState = {
     currentTurn: null,
     isMyTurn: false,
     hasShot: false,
+    waitingForExtraShot: false,
     
     // Ship Configuration
     shipTypes: [
@@ -46,6 +47,7 @@ const gameState = {
     enemyBoard: Array(10).fill(null).map(() => Array(10).fill('unknown')),
     myShips: [],
     enemyShips: [],
+    enemyId: null,
     
     // Placement Data
     selectedShip: null,
@@ -59,12 +61,13 @@ const gameState = {
     // Powerup State
     activePowerup: null,
     powerupMode: null,
-    torpedoDirection: 'top', // top, bottom, left, right
+    torpedoDirection: 'top',
     
     // Mine and Radar tracking
-    myMines: [], // {row, col}
-    enemyMines: [], // mines we've discovered
-    radarScans: [], // {row, col, value}
+    myMines: [],
+    enemyMines: [],
+    radarScans: [],
+    triggeredMines: [],
     
     // Stats
     shots: 0,
@@ -76,11 +79,6 @@ const gameState = {
     
     // Track enemy sunk ships
     enemySunkShips: {},
-    
-    // Cheats - Disabled but code remains
-    probabilityMap: Array(10).fill(null).map(() => Array(10).fill(0)),
-    bestShot: null,
-    cheatsEnabled: false,
     
     // Audio
     volume: 0.5,
@@ -392,7 +390,8 @@ function handleMinePlacement(e) {
 function canPlaceMine(row, col) {
     // Can't place on ships or existing mines
     return gameState.myBoard[row][col] === 'water' && 
-           !gameState.myMines.some(mine => mine.row === row && mine.col === col);
+           !gameState.myMines.some(mine => mine.row === row && mine.col === col) &&
+           !gameState.triggeredMines.some(mine => mine.row === row && mine.col === col);
 }
 
 function placeMine(row, col) {
@@ -412,6 +411,12 @@ function placeMine(row, col) {
     // Update Firebase
     if (gameState.lobbyRef) {
         gameState.lobbyRef.child(`players/${gameState.playerId}/mines`).set(gameState.myMines);
+        
+        // Notify enemy to update their radar scans
+        gameState.lobbyRef.child('mineUpdate').set({
+            playerId: gameState.playerId,
+            timestamp: Date.now()
+        });
     }
     
     // Update stats
@@ -459,14 +464,11 @@ function getDirectionName(direction) {
 }
 
 function updateTorpedoPreview() {
-    // This will be called when hovering over enemy grid with torpedo active
     const enemyGrid = document.getElementById('enemyGrid');
     if (!enemyGrid) return;
     
-    // Clear existing previews
     clearAllPreviews();
     
-    // Get current hover position if any
     const hoverCell = enemyGrid.querySelector('.grid-cell:hover');
     if (hoverCell && !hoverCell.classList.contains('grid-header')) {
         const row = parseInt(hoverCell.dataset.row);
@@ -626,11 +628,12 @@ function setupLobbyListeners() {
         const players = snapshot.val() || {};
         updatePlayersList(players);
         
-        // Store enemy name for later use
+        // Store enemy name and ID for later use
         const playerIds = Object.keys(players);
         const enemyId = playerIds.find(id => id !== gameState.playerId);
         if (enemyId && players[enemyId]) {
             gameState.enemyName = players[enemyId].name;
+            gameState.enemyId = enemyId;
         }
         
         // Check if both players are present
@@ -669,6 +672,14 @@ function setupLobbyListeners() {
         }
     });
     
+    // Listen for mine updates
+    gameState.lobbyRef.child('mineUpdate').on('value', snapshot => {
+        const update = snapshot.val();
+        if (update && update.playerId !== gameState.playerId && gameState.currentScreen === 'game') {
+            updateRadarScansAfterMineChange();
+        }
+    });
+    
     // Handle disconnection
     gameState.lobbyRef.child(`players/${gameState.playerId}`).onDisconnect().remove();
 }
@@ -686,7 +697,7 @@ function updatePlayersList(players) {
         playerItem.innerHTML = `
             <span class="player-icon">${id === gameState.playerId ? '👤' : '🎮'}</span>
             <span class="player-name">${player.name} ${id === gameState.playerId ? '(Du)' : ''}</span>
-            ${player.ready ? '<span style="color: var(--primary-color)">✅ Bereit</span>' : ''}
+            ${player.ready ? '<span style="color: var(--orange-color)">✅ Bereit</span>' : ''}
         `;
         playersList.appendChild(playerItem);
         index++;
@@ -911,7 +922,6 @@ function canPlaceShip(positions) {
                 
                 if (adjRow >= 0 && adjRow < 10 && adjCol >= 0 && adjCol < 10) {
                     if (gameState.myBoard[adjRow][adjCol] === 'ship') {
-                        // Check if this adjacent ship cell is part of the current ship being placed
                         const isPartOfCurrentShip = positions.some(p => p.row === adjRow && p.col === adjCol);
                         if (!isPartOfCurrentShip) {
                             return false;
@@ -1039,6 +1049,9 @@ function initializeGame() {
     
     // Restore mines from Firebase
     restoreMinesFromFirebase();
+    
+    // Setup radar listener
+    setupRadarListener();
 }
 
 function restoreMinesFromFirebase() {
@@ -1083,8 +1096,8 @@ function handleEnemyGridHover(e) {
 }
 
 function showRadarPreview(centerRow, centerCol) {
-    // Check if can place radar here
-    if (gameState.enemyBoard[centerRow][centerCol] !== 'unknown') {
+    // Can only place on miss cells (not unknown or hit)
+    if (gameState.enemyBoard[centerRow][centerCol] !== 'miss') {
         const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${centerRow}"][data-col="${centerCol}"]`);
         if (cell) cell.classList.add('invalid');
         return;
@@ -1149,11 +1162,12 @@ function updatePlayerBoard() {
         }
     }
 }
-// Continuation of script.js - Part 3
 
 function updateTurnIndicator() {
     const enemyGrid = document.getElementById('enemyGrid');
     const endTurnBtn = document.getElementById('endTurnBtn');
+    const enemyBoardWrapper = document.getElementById('enemyBoardWrapper');
+    const playerBoardWrapper = document.getElementById('playerBoardWrapper');
     
     if (!enemyGrid || !endTurnBtn) return;
     
@@ -1163,18 +1177,25 @@ function updateTurnIndicator() {
         enableEnemyGrid(true);
         
         // Add energy at turn start
-        if (gameState.energy < gameState.maxEnergy) {
+        if (gameState.energy < gameState.maxEnergy && !gameState.waitingForExtraShot) {
             updateEnergy(1);
             showNotification('+1 Energie (Zugbeginn)', 'info');
         }
         
         // Reset shot status
         gameState.hasShot = false;
+        gameState.waitingForExtraShot = false;
         endTurnBtn.disabled = true;
         
         // Update body border for player turn
         document.body.classList.add('player-turn');
         document.body.classList.remove('enemy-turn');
+        
+        // Make enemy board active and large
+        enemyBoardWrapper.classList.add('active');
+        enemyBoardWrapper.classList.remove('inactive');
+        playerBoardWrapper.classList.add('inactive');
+        playerBoardWrapper.classList.remove('active');
         
         // Play turn sound
         playSound('turn');
@@ -1187,6 +1208,12 @@ function updateTurnIndicator() {
         // Update body border for enemy turn
         document.body.classList.add('enemy-turn');
         document.body.classList.remove('player-turn');
+        
+        // Make player board active and large
+        playerBoardWrapper.classList.add('active');
+        playerBoardWrapper.classList.remove('inactive');
+        enemyBoardWrapper.classList.add('inactive');
+        enemyBoardWrapper.classList.remove('active');
     }
     
     updatePowerupButtons();
@@ -1257,22 +1284,15 @@ function makeShot(row, col) {
     };
     
     // Send shot to enemy
-    const enemyId = getEnemyId();
-    gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
+    gameState.lobbyRef.child(`pendingShots/${gameState.enemyId}/${shotId}`).set(shotData).then(() => {
         gameState.shots++;
         updateStats();
-        
-        // Enable end turn button
-        const endTurnBtn = document.getElementById('endTurnBtn');
-        if (endTurnBtn) {
-            endTurnBtn.disabled = false;
-        }
     });
 }
 
 function placeRadar(centerRow, centerCol) {
-    if (gameState.enemyBoard[centerRow][centerCol] !== 'unknown') {
-        showNotification('Radar kann nur auf unbekannten Feldern platziert werden!', 'error');
+    if (gameState.enemyBoard[centerRow][centerCol] !== 'miss') {
+        showNotification('Radar kann nur auf Fehlschüssen platziert werden!', 'error');
         return;
     }
     
@@ -1281,7 +1301,6 @@ function placeRadar(centerRow, centerCol) {
     gameState.powerupsUsed++;
     
     // Calculate scan value
-    let count = 0;
     const positions = [];
     
     for (let dr = -1; dr <= 1; dr++) {
@@ -1290,9 +1309,6 @@ function placeRadar(centerRow, centerCol) {
             const c = centerCol + dc;
             if (r >= 0 && r < 10 && c >= 0 && c < 10) {
                 positions.push({row: r, col: c});
-                
-                // Count ships and mines in range
-                // This will be calculated on enemy side
             }
         }
     }
@@ -1311,6 +1327,7 @@ function placeRadar(centerRow, centerCol) {
     deactivatePowerup();
     showNotification('Radar-Scan gestartet...', 'info');
 }
+// Continuation of script.js - Part 3
 
 function handleRadarScan(scan) {
     if (scan.playerId === gameState.playerId) {
@@ -1339,6 +1356,23 @@ function handleRadarScan(scan) {
     });
 }
 
+function updateRadarScansAfterMineChange() {
+    // Re-calculate all radar scan values
+    gameState.radarScans.forEach(scan => {
+        // Request updated count from enemy
+        const radarData = {
+            centerRow: scan.centerRow,
+            centerCol: scan.centerCol,
+            positions: scan.positions,
+            playerId: gameState.playerId,
+            timestamp: Date.now(),
+            isUpdate: true
+        };
+        
+        gameState.lobbyRef.child('radarScans').push(radarData);
+    });
+}
+
 function fireCannon(row, col) {
     // Check if all 2x2 cells are valid
     const targets = [];
@@ -1360,7 +1394,6 @@ function fireCannon(row, col) {
     // Deduct energy
     updateEnergy(-5);
     gameState.powerupsUsed++;
-    gameState.hasShot = true;
     
     // Fire at each target sequentially
     fireCannonSequence(targets, 0);
@@ -1371,10 +1404,7 @@ function fireCannon(row, col) {
 function fireCannonSequence(targets, index) {
     if (index >= targets.length) {
         // All shots fired
-        const endTurnBtn = document.getElementById('endTurnBtn');
-        if (endTurnBtn) {
-            endTurnBtn.disabled = false;
-        }
+        updatePowerupButtons();
         return;
     }
     
@@ -1396,8 +1426,7 @@ function fireCannonSequence(targets, index) {
         type: 'cannon'
     };
     
-    const enemyId = getEnemyId();
-    gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
+    gameState.lobbyRef.child(`pendingShots/${gameState.enemyId}/${shotId}`).set(shotData).then(() => {
         gameState.shots++;
         updateStats();
         
@@ -1414,7 +1443,6 @@ function fireTorpedo(row, col) {
     // Deduct energy
     updateEnergy(-9);
     gameState.powerupsUsed++;
-    gameState.hasShot = true;
     
     // Fire torpedo
     fireTorpedoSequence(path, 0);
@@ -1425,10 +1453,7 @@ function fireTorpedo(row, col) {
 function fireTorpedoSequence(path, index) {
     if (index >= path.length) {
         // Torpedo finished
-        const endTurnBtn = document.getElementById('endTurnBtn');
-        if (endTurnBtn) {
-            endTurnBtn.disabled = false;
-        }
+        updatePowerupButtons();
         return;
     }
     
@@ -1445,26 +1470,23 @@ function fireTorpedoSequence(path, index) {
             shooterId: gameState.playerId,
             type: 'torpedo',
             torpedoIndex: index,
-            torpedoPath: path
+            torpedoPath: path,
+            torpedoDirection: gameState.torpedoDirection
         };
         
-        const enemyId = getEnemyId();
-        gameState.lobbyRef.child(`pendingShots/${enemyId}/${shotId}`).set(shotData).then(() => {
+        gameState.lobbyRef.child(`pendingShots/${gameState.enemyId}/${shotId}`).set(shotData).then(() => {
             gameState.shots++;
             updateStats();
             
             // Create wave animation
-            createTorpedoWave(target.row, target.col);
+            createTorpedoWave(target.row, target.col, gameState.torpedoDirection);
             
             // Continue after delay
             setTimeout(() => {
                 // Check if we hit something that stops torpedo
                 if (gameState.enemyBoard[target.row][target.col] === 'hit') {
                     // Stop torpedo
-                    const endTurnBtn = document.getElementById('endTurnBtn');
-                    if (endTurnBtn) {
-                        endTurnBtn.disabled = false;
-                    }
+                    updatePowerupButtons();
                 } else {
                     // Continue
                     fireTorpedoSequence(path, index + 1);
@@ -1477,48 +1499,65 @@ function fireTorpedoSequence(path, index) {
     }
 }
 
-function createTorpedoWave(row, col) {
-    // Create wave effect on adjacent cells
-    const direction = gameState.torpedoDirection;
-    const adjacents = [];
-    
+function createTorpedoWave(row, col, direction) {
+    // Create wave effect on adjacent cells to the edge
     if (direction === 'top' || direction === 'bottom') {
-        // Horizontal wave
-        adjacents.push({row, col: col - 1});
-        adjacents.push({row, col: col + 1});
-    } else {
-        // Vertical wave
-        adjacents.push({row: row - 1, col});
-        adjacents.push({row: row + 1, col});
-    }
-    
-    adjacents.forEach(adj => {
-        if (adj.row >= 0 && adj.row < 10 && adj.col >= 0 && adj.col < 10) {
-            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${adj.row}"][data-col="${adj.col}"]`);
+        // Horizontal waves - from target to edges
+        // Left side
+        for (let c = col - 1; c >= 0; c--) {
+            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${c}"]`);
             if (cell) {
-                cell.classList.add('torpedo-wave');
                 setTimeout(() => {
-                    cell.classList.remove('torpedo-wave');
-                }, 800);
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (col - c) * 50);
             }
         }
-    });
-}
-
-function getEnemyId() {
-    let enemyId = null;
-    
-    gameState.lobbyRef.child('players').once('value', snapshot => {
-        const players = snapshot.val();
-        const playerIds = Object.keys(players);
-        enemyId = playerIds.find(id => id !== gameState.playerId);
-    });
-    
-    return enemyId;
+        // Right side
+        for (let c = col + 1; c < 10; c++) {
+            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${row}"][data-col="${c}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (c - col) * 50);
+            }
+        }
+    } else {
+        // Vertical waves - from target to edges
+        // Top side
+        for (let r = row - 1; r >= 0; r--) {
+            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${r}"][data-col="${col}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (row - r) * 50);
+            }
+        }
+        // Bottom side
+        for (let r = row + 1; r < 10; r++) {
+            const cell = document.querySelector(`#enemyGrid .grid-cell[data-row="${r}"][data-col="${col}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (r - row) * 50);
+            }
+        }
+    }
 }
 
 function handleShotResult(result) {
-    const { row, col, isHit, isSunk, shipType, isMineTrigger, mineShots } = result;
+    const { row, col, isHit, isSunk, shipType, isMineTrigger, mineShots, type } = result;
     
     // Update enemy board
     gameState.enemyBoard[row][col] = isHit ? 'hit' : 'miss';
@@ -1528,8 +1567,11 @@ function handleShotResult(result) {
         cell.classList.add(isHit ? 'hit' : 'miss');
         
         if (!isHit) {
-            // Miss animation
+            // Miss animation - show on attacker's view
             cell.classList.add('wave-animation');
+            setTimeout(() => {
+                cell.classList.remove('wave-animation');
+            }, 800);
         }
     }
     
@@ -1565,10 +1607,27 @@ function handleShotResult(result) {
             playSound('hit');
         }
         
-        // Re-enable grid for more actions
-        enableEnemyGrid(true);
+        // Handle extra shot for normal shots only
+        if (type === 'normal') {
+            gameState.hasShot = false;
+            gameState.waitingForExtraShot = true;
+            enableEnemyGrid(true);
+            showNotification('Treffer! Du darfst nochmal schießen!', 'success');
+        } else {
+            // Enable end turn button after powerup hit
+            const endTurnBtn = document.getElementById('endTurnBtn');
+            if (endTurnBtn) {
+                endTurnBtn.disabled = false;
+            }
+        }
     } else {
         playSound('miss');
+        
+        // Enable end turn button after miss
+        const endTurnBtn = document.getElementById('endTurnBtn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = false;
+        }
     }
     
     // Handle mine trigger
@@ -1576,7 +1635,10 @@ function handleShotResult(result) {
         showNotification('Mine ausgelöst! Zusätzliche Schüsse werden abgefeuert...', 'warning');
         gameState.minesHit++;
         
-        // Process additional mine shots
+        // Mark mine as triggered (keep it visible)
+        gameState.enemyMines.push({row, col});
+        
+        // Process additional mine shots with delay
         setTimeout(() => {
             processMineShots(mineShots);
         }, 1000);
@@ -1604,6 +1666,9 @@ function processMineShots(mineShots) {
             } else {
                 playSound('miss');
                 cell.classList.add('wave-animation');
+                setTimeout(() => {
+                    cell.classList.remove('wave-animation');
+                }, 800);
             }
         }
         
@@ -1611,14 +1676,14 @@ function processMineShots(mineShots) {
         updateStats();
         
         index++;
-        setTimeout(fireNext, 500);
+        setTimeout(fireNext, 400); // Delayed shots
     }
     
     fireNext();
 }
 
 function handleIncomingShot(shot) {
-    const { row, col, shotId, shooterId, type } = shot;
+    const { row, col, shotId, shooterId, type, torpedoDirection } = shot;
     const cellContent = gameState.myBoard[row][col];
     
     const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${row}"][data-col="${col}"]`);
@@ -1631,7 +1696,8 @@ function handleIncomingShot(shot) {
         shipType: null,
         shipPositions: [],
         isMineTrigger: false,
-        mineShots: []
+        mineShots: [],
+        type: type
     };
     
     // Check for mine hit
@@ -1640,12 +1706,15 @@ function handleIncomingShot(shot) {
         // Mine triggered
         result.isMineTrigger = true;
         
-        // Remove mine
+        // Remove mine from active mines
         gameState.myMines.splice(mineIndex, 1);
         
-        // Update visual
+        // Add to triggered mines to keep it visible
+        gameState.triggeredMines.push({row, col});
+        
+        // Update visual - keep it purple with bomb
         if (cell) {
-            cell.classList.remove('mine');
+            cell.classList.add('mine-triggered');
             cell.classList.add('miss');
         }
         
@@ -1653,6 +1722,15 @@ function handleIncomingShot(shot) {
         result.mineShots = generateMineShots();
         
         playSound('miss');
+        
+        // Update Firebase mines
+        gameState.lobbyRef.child(`players/${gameState.playerId}/mines`).set(gameState.myMines);
+        
+        // Notify about mine update
+        gameState.lobbyRef.child('mineUpdate').set({
+            playerId: gameState.playerId,
+            timestamp: Date.now()
+        });
     } else if (cellContent === 'ship') {
         // Hit
         gameState.myBoard[row][col] = 'hit';
@@ -1687,13 +1765,74 @@ function handleIncomingShot(shot) {
         if (cell) {
             cell.classList.add('miss');
             cell.classList.add('wave-animation');
+            setTimeout(() => {
+                cell.classList.remove('wave-animation');
+            }, 800);
         }
         
         playSound('miss');
     }
     
+    // Create torpedo wave on defender's view
+    if (type === 'torpedo' && torpedoDirection) {
+        createTorpedoWaveDefender(row, col, torpedoDirection);
+    }
+    
     // Send result back
     gameState.lobbyRef.child(`shotResults/${shooterId}/${shotId}`).set(result);
+}
+
+function createTorpedoWaveDefender(row, col, direction) {
+    // Same as attacker but on playerGrid
+    if (direction === 'top' || direction === 'bottom') {
+        // Horizontal waves
+        for (let c = col - 1; c >= 0; c--) {
+            const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${row}"][data-col="${c}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (col - c) * 50);
+            }
+        }
+        for (let c = col + 1; c < 10; c++) {
+            const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${row}"][data-col="${c}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (c - col) * 50);
+            }
+        }
+    } else {
+        // Vertical waves
+        for (let r = row - 1; r >= 0; r--) {
+            const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${r}"][data-col="${col}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (row - r) * 50);
+            }
+        }
+        for (let r = row + 1; r < 10; r++) {
+            const cell = document.querySelector(`#playerGrid .grid-cell[data-row="${r}"][data-col="${col}"]`);
+            if (cell) {
+                setTimeout(() => {
+                    cell.classList.add('torpedo-wave');
+                    setTimeout(() => {
+                        cell.classList.remove('torpedo-wave');
+                    }, 400);
+                }, (r - row) * 50);
+            }
+        }
+    }
 }
 
 function animateHitAdjacent(row, col) {
@@ -1720,28 +1859,28 @@ function animateHitAdjacent(row, col) {
 
 function generateMineShots() {
     const shots = [];
-    const enemyId = getEnemyId();
     
-    // One shot on a random adjacent cell
-    const adjacents = [];
+    // Get all unknown cells
+    const unknownCells = [];
     for (let r = 0; r < 10; r++) {
         for (let c = 0; c < 10; c++) {
             if (gameState.enemyBoard[r][c] === 'unknown') {
-                adjacents.push({row: r, col: c});
+                unknownCells.push({row: r, col: c});
             }
         }
     }
     
     // Pick 2 random cells
-    for (let i = 0; i < 2 && adjacents.length > 0; i++) {
-        const index = Math.floor(Math.random() * adjacents.length);
-        const target = adjacents.splice(index, 1)[0];
+    for (let i = 0; i < 2 && unknownCells.length > 0; i++) {
+        const index = Math.floor(Math.random() * unknownCells.length);
+        const target = unknownCells.splice(index, 1)[0];
         
-        // Simulate shot
+        // Check actual hit/miss on enemy board
+        // This will be processed properly when sent back
         shots.push({
             row: target.row,
             col: target.col,
-            isHit: false // Will be determined when processed
+            isHit: false // Will be updated when processed
         });
     }
     
@@ -1811,12 +1950,21 @@ function drawShipOutline(positions, isEnemy) {
     const outline = document.createElement('div');
     outline.className = 'ship-outline';
     
-    // Calculate position and size
-    const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'));
-    const gap = 2;
+    // Get first cell to calculate position
+    const firstCell = grid.querySelector('.grid-cell[data-row="0"][data-col="0"]');
+    const headerCell = grid.querySelector('.grid-header');
+    if (!firstCell || !headerCell) return;
     
-    const left = (minCol + 1) * (cellSize + gap) + 10;
-    const top = (minRow + 1) * (cellSize + gap) + 10;
+    // Calculate cell dimensions and grid offset
+    const cellRect = firstCell.getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+    const cellSize = cellRect.width;
+    const gap = 2; // Gap between cells
+    
+    // Calculate position relative to grid
+    const headerSize = headerCell.getBoundingClientRect().width;
+    const left = headerSize + (minCol * (cellSize + gap)) + 10; // 10px grid padding
+    const top = headerSize + (minRow * (cellSize + gap)) + 10;
     const width = (maxCol - minCol + 1) * (cellSize + gap) - gap;
     const height = (maxRow - minRow + 1) * (cellSize + gap) - gap;
     
@@ -1829,11 +1977,6 @@ function drawShipOutline(positions, isEnemy) {
 }
 
 function endTurn() {
-    if (!gameState.hasShot && gameState.powerupsUsed === 0) {
-        showNotification('Du musst mindestens eine Aktion ausführen!', 'warning');
-        return;
-    }
-    
     // Switch turns
     switchTurn();
     
@@ -1972,13 +2115,10 @@ function handleGameOver() {
 
 function surrenderGame() {
     if (confirm('Willst du wirklich aufgeben?')) {
-        // Get enemy ID
-        const enemyId = getEnemyId();
-        
         // Set enemy as winner
         gameState.lobbyRef.update({
             gameState: 'gameover',
-            winner: enemyId
+            winner: gameState.enemyId
         });
         
         showNotification('Du hast aufgegeben!', 'warning');
@@ -2008,11 +2148,12 @@ function displayRadarResult(result) {
     const centerCell = document.querySelector(`#enemyGrid .grid-cell[data-row="${centerRow}"][data-col="${centerCol}"]`);
     if (centerCell) {
         centerCell.classList.add('radar-center');
+        centerCell.dataset.radarCount = count;
         centerCell.textContent = count;
     }
     
     // Store radar scan
-    gameState.radarScans.push({ centerRow, centerCol, count });
+    gameState.radarScans.push({ centerRow, centerCol, count, positions });
     
     showNotification(`Radar-Scan: ${count} Objekte entdeckt!`, 'info');
 }
@@ -2097,9 +2238,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize connection status
     updateConnectionStatus(false);
-    
-    // Setup radar listener
-    setupRadarListener();
     
     // Handle page unload
     window.addEventListener('beforeunload', () => {
