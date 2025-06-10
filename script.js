@@ -32,6 +32,7 @@ const gameState = {
     isMyTurn: false,
     hasShot: false,
     waitingForExtraShot: false,
+    currentBoardView: 'enemy', // 'enemy' or 'player'
     
     // Ship Configuration
     shipTypes: [
@@ -225,6 +226,27 @@ function hideSettingsPopup() {
     }
 }
 
+// Board View Toggle Functions
+function toggleBoardView() {
+    if (gameState.currentBoardView === 'enemy') {
+        showPlayerBoard();
+    } else {
+        showEnemyBoard();
+    }
+}
+
+function showEnemyBoard() {
+    gameState.currentBoardView = 'enemy';
+    document.getElementById('enemyBoardSection').style.display = 'flex';
+    document.getElementById('playerBoardSection').style.display = 'none';
+}
+
+function showPlayerBoard() {
+    gameState.currentBoardView = 'player';
+    document.getElementById('playerBoardSection').style.display = 'flex';
+    document.getElementById('enemyBoardSection').style.display = 'none';
+}
+
 // Grid Creation Functions
 function createGrid(containerId, isEnemy = false) {
     const container = document.getElementById(containerId);
@@ -321,7 +343,10 @@ function activatePowerup(powerupType) {
     
     // Add appropriate event listeners based on powerup
     if (powerupType === 'mine') {
+        // Switch to player board for mine placement
+        showPlayerBoard();
         addMinePlacementListeners();
+        showNotification('Platziere eine Mine auf deinem Spielfeld', 'info');
     } else if (powerupType === 'torpedo') {
         showNotification('Nutze Pfeiltasten für Richtung', 'info');
         addTorpedoListeners();
@@ -334,6 +359,13 @@ function deactivatePowerup() {
     updatePowerupButtons();
     clearAllPreviews();
     removePowerupListeners();
+    
+    // Return to appropriate board view
+    if (gameState.isMyTurn) {
+        showEnemyBoard();
+    } else {
+        showPlayerBoard();
+    }
 }
 
 function addMinePlacementListeners() {
@@ -620,7 +652,6 @@ function joinLobby() {
         showNotification('Fehler beim Beitreten: ' + error.message, 'error');
     });
 }
-// Continuation of script.js - Part 2
 
 function setupLobbyListeners() {
     // Listen for player changes
@@ -1170,6 +1201,9 @@ function updateTurnIndicator() {
     if (!enemyGrid || !endTurnBtn) return;
     
     if (gameState.isMyTurn) {
+        // Show enemy board when it's our turn
+        showEnemyBoard();
+        
         enemyGrid.classList.add('active');
         enemyGrid.classList.remove('disabled');
         enableEnemyGrid(true);
@@ -1192,6 +1226,9 @@ function updateTurnIndicator() {
         // Play turn sound
         playSound('turn');
     } else {
+        // Show player board when it's enemy's turn
+        showPlayerBoard();
+        
         enemyGrid.classList.remove('active');
         enemyGrid.classList.add('disabled');
         enableEnemyGrid(false);
@@ -1313,7 +1350,6 @@ function placeRadar(centerRow, centerCol) {
     deactivatePowerup();
     showNotification('Radar-Scan gestartet...', 'info');
 }
-// Continuation of script.js - Part 3
 
 function handleRadarScan(scan) {
     if (scan.playerId === gameState.playerId) {
@@ -2208,9 +2244,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (torpedoBtn) torpedoBtn.addEventListener('click', () => activatePowerup('torpedo'));
     
     // Game buttons
+    const toggleBoardBtn = document.getElementById('toggleBoardBtn');
     const endTurnBtn = document.getElementById('endTurnBtn');
     const surrenderBtn = document.getElementById('surrenderBtn');
     
+    if (toggleBoardBtn) toggleBoardBtn.addEventListener('click', toggleBoardView);
     if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
     if (surrenderBtn) surrenderBtn.addEventListener('click', surrenderGame);
     
