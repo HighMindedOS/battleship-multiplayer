@@ -1,230 +1,1222 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Battleship Multiplayer</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <!-- Video Background -->
-    <video autoplay muted loop id="bgVideo">
-        <source src="background.mp4" type="video/mp4">
-    </video>
-    <div class="glass-overlay"></div>
+/* CSS Variables */
+:root {
+    --green-color: #00ff41;
+    --green-secondary: #00d837;
+    --orange-color: #ff8800;
+    --orange-secondary: #ff6600;
+    --danger-color: #ff4444;
+    --warning-color: #ffaa00;
+    --purple-color: #9b59b6;
+    --bg-dark: #0a0e27;
+    --bg-darker: #050714;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border-color: #ffffff;
+    --glass-bg: rgba(0, 0, 0, 0.85);
+    --grid-bg: rgba(0, 20, 40, 0.5);
+    --border-thickness: 15px;
+    --button-border: 3px;
+}
 
-    <!-- Settings Icon (Top Right) -->
-    <div class="settings-icon" id="settingsIcon">
-        <img src="opt.ico" alt="Settings" width="32" height="32">
-    </div>
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    <!-- Game Container -->
-    <div class="game-container">
-        <!-- Settings Popup -->
-        <div id="settingsPopup" class="popup-overlay">
-            <div class="popup-content">
-                <h2>Einstellungen</h2>
-                <div class="settings-section">
-                    <h3>Verbindungsstatus</h3>
-                    <div class="connection-info">
-                        <span class="status-dot"></span>
-                        <span class="status-text">Offline</span>
-                    </div>
-                </div>
-                <div class="settings-section">
-                    <h3>Lautstärke</h3>
-                    <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="50">
-                    <span id="volumeValue">50%</span>
-                </div>
-                <button class="close-popup" id="closeSettings">Schließen</button>
-            </div>
-        </div>
+html, body {
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+}
 
-        <!-- Lobby Screen -->
-        <div id="lobbyScreen" class="screen active">
-            <div class="lobby-logo">
-                <img src="logo.png" alt="Battleship Multiplayer" class="game-logo">
-            </div>
-            
-            <div class="lobby-container">
-                <!-- Create Game -->
-                <div class="lobby-card left-card">
-                    <h2 class="orange-menu">🔗 Neues Spiel erstellen</h2>
-                    <input type="text" id="playerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
-                    <button id="createLobbyBtn" class="orange-menu">Lobby erstellen</button>
-                </div>
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--bg-darker);
+    color: var(--text-primary);
+    position: relative;
+    border: var(--border-thickness) solid white;
+    transition: border-color 0.3s ease;
+}
 
-                <!-- Join Game -->
-                <div class="lobby-card right-card">
-                    <h2 class="orange-menu">🔌 Einem Spiel beitreten</h2>
-                    <input type="text" id="joinPlayerName" class="orange-menu" placeholder="Dein Name" maxlength="20">
-                    <input type="text" id="lobbyCode" class="orange-menu" placeholder="Lobby Code" maxlength="6">
-                    <button id="joinLobbyBtn" class="orange-menu">Beitreten</button>
-                </div>
-            </div>
-        </div>
+/* Hide all scrollbars */
+* {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
 
-        <!-- Waiting Screen -->
-        <div id="waitingScreen" class="screen">
-            <div class="waiting-content">
-                <h2>Lobby</h2>
-                
-                <div class="lobby-code-box orange-menu" id="copyLobbyCode">
-                    <div id="lobbyCodeDisplay" class="orange-menu"></div>
-                    <div class="copy-hint">Klicken zum Kopieren</div>
-                </div>
-                
-                <div class="players-list" id="playersList">
-                    <!-- Players will be added dynamically -->
-                </div>
-                
-                <button id="leaveLobbyBtn" class="secondary-btn">Lobby verlassen</button>
-            </div>
-        </div>
+*::-webkit-scrollbar {
+    display: none;
+}
 
-        <!-- Ship Placement Screen -->
-        <div id="placementScreen" class="screen">
-            <div class="placement-container">
-                <div class="placement-left edge-card">
-                    <h3 class="green-element">Verfügbare Schiffe</h3>
-                    <div id="availableShips" class="available-ships">
-                        <!-- Ships will be added dynamically -->
-                    </div>
-                    
-                    <div class="placement-controls">
-                        <button id="rotateBtn" class="control-btn">[R] Rotieren</button>
-                        <div class="placement-actions">
-                            <button id="randomPlaceBtn" class="icon-only-btn" title="Zufällig platzieren">🎲</button>
-                            <button id="clearBoardBtn" class="icon-only-btn" title="Grid leeren">🗑️</button>
-                            <button id="readyBtn" class="ready-btn green-element" disabled>Ready</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="placement-center">
-                    <div class="placement-grid-container">
-                        <h3 class="board-title green-element">Platziere deine Schiffe</h3>
-                        <div id="placementGrid" class="game-grid responsive-grid"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+/* Green Elements Class - No hover effect for text */
+.green-element {
+    color: var(--green-color) !important;
+    border-color: var(--green-color) !important;
+}
 
-        <!-- Game Screen -->
-        <div id="gameScreen" class="screen">
-            <div class="game-layout">
-                <!-- Left: Player Controls -->
-                <div class="game-sidebar left edge-card game-card">
-                    <!-- Energy Display -->
-                    <div class="energy-display">
-                        <span class="energy-icon">⚡</span>
-                        <span id="energyText">0/10</span>
-                    </div>
-                    
-                    <!-- Powerups -->
-                    <div class="powerups-section">
-                        <h3 class="green-element">Powerups</h3>
-                        <div class="powerup-buttons">
-                            <button class="powerup-btn" id="mineBtn" data-cost="2">
-                                <span class="powerup-icon">💣</span>
-                                <span>Mine (2⚡)</span>
-                            </button>
-                            <button class="powerup-btn" id="radarBtn" data-cost="3">
-                                <span class="powerup-icon">📡</span>
-                                <span>Radar (3⚡)</span>
-                            </button>
-                            <button class="powerup-btn" id="cannonBtn" data-cost="5">
-                                <span class="powerup-icon">🎯</span>
-                                <span>Geschütz (5⚡)</span>
-                            </button>
-                            <button class="powerup-btn" id="torpedoBtn" data-cost="9">
-                                <span class="powerup-icon">🚀</span>
-                                <span>Torpedo (9⚡)</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Ships Status -->
-                    <div class="ships-status-header green-element">Deine Schiffe</div>
-                    <div id="playerShipsStatus" class="ships-display"></div>
-                    
-                    <!-- Surrender Button -->
-                    <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
-                </div>
+/* Green hover only for buttons */
+button.green-element:hover:not(:disabled) {
+    background: rgba(0, 255, 65, 0.1) !important;
+}
 
-                <!-- Center: Game Board -->
-                <div class="game-center">
-                    <div class="board-container">
-                        <!-- Enemy Board -->
-                        <div id="enemyBoardSection" class="board-section">
-                            <h3 id="enemyName" class="board-title enemy-title">Gegner</h3>
-                            <div id="enemyGrid" class="game-grid responsive-grid enemy-board"></div>
-                        </div>
-                        
-                        <!-- Player Board -->
-                        <div id="playerBoardSection" class="board-section" style="display: none;">
-                            <h3 class="board-title player-title green-element">Dein Feld</h3>
-                            <div id="playerGrid" class="game-grid responsive-grid player-board"></div>
-                        </div>
-                    </div>
-                </div>
+/* Orange Menu Elements Class */
+.orange-menu {
+    color: var(--orange-color) !important;
+    border-color: var(--orange-color) !important;
+}
 
-                <!-- Right: Stats & Enemy Ships -->
-                <div class="game-sidebar right edge-card game-card">
-                    <!-- Enemy Ships -->
-                    <div class="ships-status-header enemy-ships-header">Gegner Schiffe</div>
-                    <div id="enemyShipsStatus" class="ships-display"></div>
-                    
-                    <!-- Stats -->
-                    <h3>Statistik</h3>
-                    <div class="stats">
-                        <div class="stat-item">
-                            <span>Schüsse:</span>
-                            <span id="shotCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span>Treffer:</span>
-                            <span id="hitCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span>Versenkt:</span>
-                            <span id="sunkCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span>Minen:</span>
-                            <span id="mineCount">0</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Board Toggle Button -->
-                    <button id="toggleBoardBtn" class="toggle-board-btn">
-                        <span class="toggle-icon">🔄</span>
-                        <span>Spielfeld wechseln</span>
-                    </button>
-                    
-                    <!-- End Turn Button -->
-                    <button id="endTurnBtn" class="end-turn-btn green-element" disabled>Zug beenden</button>
-                </div>
-            </div>
-        </div>
+button.orange-menu {
+    background: rgba(255, 136, 0, 0.1) !important;
+    border: var(--button-border) solid var(--orange-color) !important;
+}
 
-        <!-- Game Over Screen -->
-        <div id="gameOverScreen" class="screen">
-            <div class="gameover-content">
-                <div id="winnerIcon" class="winner-icon"></div>
-                <h1 id="winnerText" class="orange-menu"></h1>
-                <div id="finalStats" class="final-stats"></div>
-                <button id="newGameBtn" class="orange-menu">Neues Spiel</button>
-            </div>
-        </div>
-    </div>
+button.orange-menu:hover {
+    background: rgba(255, 136, 0, 0.2) !important;
+}
 
-    <!-- Notifications -->
-    <div id="notifications" class="notifications"></div>
+input.orange-menu {
+    border: var(--button-border) solid var(--orange-color) !important;
+}
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+/* Border states only during game */
+body.in-game.player-turn {
+    border-color: var(--green-color);
+}
+
+body.in-game.enemy-turn {
+    border-color: var(--danger-color);
+}
+
+body.in-game.victory {
+    border-color: var(--warning-color);
+}
+
+/* Edge card border states - match main border */
+body.in-game.player-turn .game-card {
+    border-color: var(--green-color);
+}
+
+body.in-game.enemy-turn .game-card {
+    border-color: var(--danger-color);
+}
+
+body.in-game.victory .game-card {
+    border-color: var(--warning-color);
+}
+
+@keyframes flash-red {
+    0%, 100% { border-color: inherit; }
+    50% { border-color: var(--danger-color); }
+}
+
+@keyframes flash-green {
+    0%, 100% { border-color: inherit; }
+    50% { border-color: var(--green-color); }
+}
+
+body.in-game.flash-hit {
+    animation: flash-red 0.5s ease 2;
+}
+
+body.in-game.flash-success {
+    animation: flash-green 0.5s ease 2;
+}
+
+/* Video Background */
+#bgVideo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: -2;
+    object-fit: cover;
+}
+
+.glass-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    z-index: -1;
+}
+
+/* Game Container */
+.game-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Settings Icon - Top Right */
+.settings-icon {
+    position: fixed;
+    top: calc(var(--border-thickness) + 20px);
+    right: calc(var(--border-thickness) + 20px);
+    cursor: pointer;
+    z-index: 1000;
+    transition: transform 0.3s;
+}
+
+.settings-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Popup Styles */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-overlay.active {
+    display: flex;
+}
+
+.popup-content {
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.popup-content h2 {
+    color: var(--orange-color);
+    margin-bottom: 20px;
+}
+
+.settings-section {
+    margin-bottom: 25px;
+}
+
+.settings-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.connection-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--danger-color);
+    transition: background-color 0.3s;
+}
+
+.status-dot.connected {
+    background-color: var(--green-color);
+}
+
+#volumeValue {
+    margin-left: 10px;
+    color: var(--text-secondary);
+}
+
+.close-popup {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.close-popup:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Volume Slider */
+.volume-slider {
+    width: 70%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--orange-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Screens */
+.screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+.screen.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Lobby Screen */
+#lobbyScreen {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+}
+
+.lobby-logo {
+    margin-bottom: 40px;
+}
+
+.game-logo {
+    max-width: 400px;
+    width: 100%;
+    height: auto;
+}
+
+/* Connected Lobby Cards */
+.lobby-container {
+    display: flex;
+    background: var(--glass-bg);
+    border: var(--button-border) solid var(--border-color);
+    border-radius: 15px;
+    overflow: hidden;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.lobby-card {
+    padding: 30px;
+    width: 350px;
+}
+
+.lobby-card.left-card {
+    border-right: var(--button-border) solid var(--border-color);
+}
+
+.lobby-card input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.lobby-card button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.lobby-card button:hover {
+    transform: translateY(-2px);
+}
+
+/* Waiting Screen */
+.waiting-content {
+    text-align: center;
+    padding: 40px;
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.lobby-code-box {
+    padding: 20px;
+    margin: 20px 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.lobby-code-box:hover {
+    background: rgba(255, 136, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+#lobbyCodeDisplay {
+    font-size: 2.5em;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.copy-hint {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+.players-list {
+    margin: 30px 0;
+    text-align: left;
+}
+
+.player-item {
+    padding: 15px;
+    margin: 10px 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Edge Cards - Bündig mit Hauptrahmen */
+.edge-card {
+    position: absolute;
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+    transition: border-color 0.3s ease;
+}
+
+/* Placement Screen */
+.placement-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.placement-left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 33.33%;
+    border-left: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.placement-center {
+    margin-left: 33.33%;
+    width: 66.67%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placement-grid-container {
+    text-align: center;
+}
+
+.available-ships {
+    margin-bottom: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.ship-item {
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid var(--green-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ship-item:hover:not(.placed) {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.ship-item.selected {
+    background: rgba(0, 255, 65, 0.2);
+}
+
+.ship-item.placed {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ship-preview {
+    display: flex;
+    gap: 2px;
+    margin-top: 10px;
+}
+
+.ship-cell {
+    width: 20px;
+    height: 20px;
+    background: var(--green-color);
+    border: 1px solid var(--bg-dark);
+}
+
+.placement-controls {
+    margin-top: auto;
+}
+
+.control-btn {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.placement-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 10px;
+}
+
+.icon-only-btn {
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 20px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-only-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ready-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.ready-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ready-btn:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Game Screen */
+#gameScreen {
+    width: 100%;
+    height: 100%;
+}
+
+.game-layout {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.game-sidebar {
+    width: 280px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.game-sidebar.left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-left: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+}
+
+.game-sidebar.right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+}
+
+.game-sidebar h3 {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+/* Energy Display */
+.energy-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.energy-icon {
+    font-size: 24px;
+}
+
+#energyText {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+/* Powerups */
+.powerups-section {
+    margin-bottom: 15px;
+}
+
+.powerup-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.powerup-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.powerup-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.powerup-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.powerup-btn.active {
+    border-color: var(--warning-color);
+    background: rgba(255, 170, 0, 0.2);
+}
+
+.powerup-icon {
+    font-size: 18px;
+}
+
+/* Ships Display */
+.ships-status-header {
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.enemy-ships-header {
+    color: var(--danger-color);
+}
+
+.ships-display {
+    margin-bottom: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ship-display-item {
+    padding: 10px;
+    margin: 8px 0;
+    border: 2px solid var(--green-color);
+    border-radius: 8px;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.ship-display-item.enemy {
+    border-color: var(--danger-color);
+}
+
+.ship-display-item > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ship-display-preview {
+    display: flex;
+    gap: 2px;
+    margin-top: 8px;
+}
+
+.ship-display-cell {
+    width: 16px;
+    height: 16px;
+    background: var(--green-color);
+    border: 1px solid var(--bg-dark);
+}
+
+.ship-display-item.enemy .ship-display-cell {
+    background: var(--danger-color);
+}
+
+.ship-display-item.sunk {
+    opacity: 0.5;
+    border-color: transparent;
+}
+
+.ship-display-item.sunk .ship-display-cell {
+    background: #666;
+    border-color: #444;
+}
+
+/* Toggle Board Button */
+.toggle-board-btn {
+    margin: 15px 0;
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.toggle-board-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.toggle-icon {
+    font-size: 18px;
+}
+
+/* End Turn Button */
+.end-turn-btn {
+    margin-top: auto;
+    padding: 12px;
+    background: rgba(0, 255, 65, 0.1);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s;
+    border: 2px solid var(--green-color);
+}
+
+.end-turn-btn:hover:not(:disabled) {
+    background: rgba(0, 255, 65, 0.2);
+    transform: translateY(-2px);
+}
+
+.end-turn-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.surrender-btn {
+    margin-top: 15px;
+    padding: 12px;
+    border: 2px solid var(--danger-color);
+    background: rgba(255, 68, 68, 0.1);
+    color: var(--danger-color);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.surrender-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Game Center - Single Board View */
+.game-center {
+    flex: 1;
+    margin: 0 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.board-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.board-section {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.board-title {
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.enemy-title {
+    color: var(--danger-color);
+}
+
+/* Stats */
+.stats {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+/* Responsive Game Grid */
+.game-grid {
+    display: grid;
+    gap: 2px;
+    background: var(--grid-bg);
+    padding: 10px;
+    border: 2px solid var(--green-color);
+    border-radius: 10px;
+    position: relative;
+}
+
+.responsive-grid {
+    --dynamic-cell-size: min(calc((100vh - 250px) / 11), calc((100vw - 650px) / 11), 50px);
+    grid-template-columns: repeat(11, var(--dynamic-cell-size));
+    grid-template-rows: repeat(11, var(--dynamic-cell-size));
+}
+
+#enemyGrid {
+    border-color: var(--danger-color);
+}
+
+.grid-cell {
+    background: rgba(0, 50, 100, 0.3);
+    border: 1px solid rgba(0, 150, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    font-size: 12px;
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.grid-header {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-weight: bold;
+    cursor: default;
+}
+
+/* Orange hover instead of green */
+.grid-cell:not(.grid-header):hover {
+    background: rgba(255, 136, 0, 0.2);
+}
+
+.grid-cell.ship {
+    background: var(--green-color);
+    border-color: var(--green-secondary);
+}
+
+.grid-cell.hit {
+    background: var(--danger-color);
+}
+
+.grid-cell.hit::after {
+    content: '💥';
+    position: absolute;
+    font-size: calc(var(--dynamic-cell-size) * 0.6);
+}
+
+.grid-cell.miss {
+    background: rgba(100, 100, 100, 0.5);
+}
+
+.grid-cell.miss::after {
+    content: '•';
+    color: white;
+    font-size: calc(var(--dynamic-cell-size) * 0.6);
+}
+
+/* Mine Cells */
+.grid-cell.mine {
+    background: var(--purple-color);
+    border-color: var(--purple-color);
+}
+
+.grid-cell.mine::after {
+    content: '💣';
+    position: absolute;
+    font-size: calc(var(--dynamic-cell-size) * 0.5);
+}
+
+/* Mine stays purple after trigger */
+.grid-cell.mine-triggered {
+    background: var(--purple-color) !important;
+    border-color: var(--purple-color) !important;
+}
+
+.grid-cell.mine-triggered::after {
+    content: '💣' !important;
+    position: absolute;
+    font-size: calc(var(--dynamic-cell-size) * 0.5);
+    z-index: 10;
+}
+
+/* Hide miss dot for triggered mines */
+.grid-cell.mine-triggered.miss::after {
+    content: '💣' !important;
+}
+
+/* Radar Cells */
+.grid-cell.radar-area {
+    background: rgba(155, 89, 182, 0.3) !important;
+    border-color: var(--purple-color) !important;
+}
+
+.grid-cell.radar-center {
+    background: var(--purple-color) !important;
+    color: white !important;
+    font-weight: bold;
+    font-size: calc(var(--dynamic-cell-size) * 0.4);
+}
+
+/* Hide miss symbol for radar center */
+.grid-cell.radar-center.miss::after {
+    display: none;
+}
+
+/* Ensure radar text is always visible */
+.grid-cell.radar-center::before {
+    content: attr(data-radar-count);
+    position: absolute;
+    z-index: 20;
+    font-size: calc(var(--dynamic-cell-size) * 0.4);
+    font-weight: bold;
+    color: white;
+}
+
+/* Sunk Ships */
+.grid-cell.sunk {
+    background: var(--danger-color);
+    animation: sinkAnimation 0.5s ease;
+}
+
+.ship-outline {
+    position: absolute;
+    border: 3px solid var(--orange-color);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes sinkAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.grid-cell.preview {
+    background: rgba(255, 136, 0, 0.3);
+}
+
+.grid-cell.invalid {
+    background: rgba(255, 0, 0, 0.3);
+}
+
+/* Powerup Previews */
+.grid-cell.cannon-preview {
+    background: rgba(255, 170, 0, 0.3);
+    border-color: var(--warning-color);
+}
+
+.grid-cell.torpedo-preview {
+    background: rgba(255, 170, 0, 0.3);
+    border-color: var(--warning-color);
+}
+
+/* Shot Animations */
+@keyframes waveAnimation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 0 30px rgba(100, 150, 255, 0);
+    }
+}
+
+@keyframes hitFlash {
+    0%, 100% {
+        background: inherit;
+    }
+    50% {
+        background: var(--danger-color);
+    }
+}
+
+@keyframes torpedoWave {
+    0% {
+        background: rgba(100, 150, 255, 0);
+    }
+    50% {
+        background: rgba(100, 150, 255, 0.5);
+    }
+    100% {
+        background: rgba(100, 150, 255, 0);
+    }
+}
+
+.grid-cell.wave-animation {
+    animation: waveAnimation 0.8s ease-out;
+}
+
+.grid-cell.hit-flash {
+    animation: hitFlash 0.5s ease 2;
+}
+
+.grid-cell.torpedo-wave {
+    animation: torpedoWave 0.4s ease;
+}
+
+/* Game Over */
+.gameover-content {
+    text-align: center;
+    padding: 40px;
+    background: var(--glass-bg);
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.winner-icon {
+    font-size: 100px;
+    margin-bottom: 20px;
+}
+
+#winnerText {
+    font-size: 2.5em;
+    margin-bottom: 30px;
+}
+
+.final-stats {
+    margin: 30px 0;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+#newGameBtn {
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#newGameBtn:hover {
+    transform: translateY(-2px);
+}
+
+/* Notifications */
+.notifications {
+    position: fixed;
+    top: calc(var(--border-thickness) + 20px);
+    right: calc(var(--border-thickness) + 20px);
+    z-index: 1000;
+}
+
+.notification {
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    animation: slideIn 0.3s ease;
+    transition: opacity 0.3s;
+    border: 2px solid;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.notification.info {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: #666;
+}
+
+.notification.success {
+    background: rgba(0, 255, 65, 0.2);
+    border-color: var(--green-color);
+}
+
+.notification.warning {
+    background: rgba(255, 170, 0, 0.2);
+    border-color: var(--warning-color);
+}
+
+.notification.error {
+    background: rgba(255, 68, 68, 0.2);
+    border-color: var(--danger-color);
+}
+
+/* Button Styles */
+button {
+    transition: all 0.3s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+.secondary-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--danger-color);
+    background: transparent;
+    color: var(--danger-color);
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 68, 68, 0.1);
+}
+
+/* Media Queries for smaller screens */
+@media (max-height: 900px) {
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 220px) / 11), calc((100vw - 600px) / 11), 40px);
+    }
+    
+    .game-sidebar {
+        width: 250px;
+    }
+    
+    .game-center {
+        margin: 0 250px;
+    }
+}
+
+@media (max-width: 1400px) {
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 200px) / 11), calc((100vw - 550px) / 11), 35px);
+    }
+    
+    .game-sidebar {
+        width: 230px;
+    }
+    
+    .game-center {
+        margin: 0 230px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 180px) / 11), calc((100vw - 480px) / 11), 30px);
+    }
+    
+    .powerup-btn span:not(.powerup-icon) {
+        display: none;
+    }
+    
+    .powerup-btn {
+        justify-content: center;
+    }
+    
+    .game-sidebar {
+        width: 200px;
+    }
+    
+    .game-center {
+        margin: 0 200px;
+    }
+    
+    .board-title {
+        font-size: 20px;
+    }
+}
