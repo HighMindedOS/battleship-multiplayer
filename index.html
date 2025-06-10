@@ -96,14 +96,15 @@
                         <div class="placement-actions">
                             <button id="randomPlaceBtn" class="icon-only-btn" title="Zufällig platzieren">🎲</button>
                             <button id="clearBoardBtn" class="icon-only-btn" title="Grid leeren">🗑️</button>
-                            <button id="readyBtn" class="ready-btn" disabled>Ready</button>
+                            <button id="readyBtn" class="ready-btn green-element" disabled>Ready</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="placement-center">
-                    <div class="placement-grid-wrapper">
-                        <div id="placementGrid" class="game-grid placement-grid"></div>
+                    <div class="placement-grid-container">
+                        <h3 class="board-title green-element">Platziere deine Schiffe</h3>
+                        <div id="placementGrid" class="game-grid responsive-grid"></div>
                     </div>
                 </div>
             </div>
@@ -151,19 +152,19 @@
                     <button id="surrenderBtn" class="surrender-btn">Aufgeben</button>
                 </div>
 
-                <!-- Center: Game Boards -->
+                <!-- Center: Game Board -->
                 <div class="game-center">
-                    <div class="boards-split-container">
-                        <!-- Enemy Board (Top) -->
-                        <div class="board-section enemy-section">
+                    <div class="board-container">
+                        <!-- Enemy Board -->
+                        <div id="enemyBoardSection" class="board-section">
                             <h3 id="enemyName" class="board-title enemy-title">Gegner</h3>
-                            <div id="enemyGrid" class="game-grid enemy-board"></div>
+                            <div id="enemyGrid" class="game-grid responsive-grid enemy-board"></div>
                         </div>
                         
-                        <!-- Player Board (Bottom) -->
-                        <div class="board-section player-section">
+                        <!-- Player Board -->
+                        <div id="playerBoardSection" class="board-section" style="display: none;">
                             <h3 class="board-title player-title green-element">Dein Feld</h3>
-                            <div id="playerGrid" class="game-grid player-board"></div>
+                            <div id="playerGrid" class="game-grid responsive-grid player-board"></div>
                         </div>
                     </div>
                 </div>
@@ -195,7 +196,13 @@
                         </div>
                     </div>
                     
-                    <!-- End Turn Button (at bottom of right card) -->
+                    <!-- Board Toggle Button -->
+                    <button id="toggleBoardBtn" class="toggle-board-btn">
+                        <span class="toggle-icon">🔄</span>
+                        <span>Spielfeld wechseln</span>
+                    </button>
+                    
+                    <!-- End Turn Button -->
                     <button id="endTurnBtn" class="end-turn-btn green-element" disabled>Zug beenden</button>
                 </div>
             </div>
