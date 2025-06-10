@@ -13,8 +13,6 @@
     --text-secondary: #a0a0a0;
     --border-color: #ffffff;
     --glass-bg: rgba(0, 0, 0, 0.85);
-    --cell-size: 32px;
-    --cell-size-large: 42px;
     --grid-bg: rgba(0, 20, 40, 0.5);
     --border-thickness: 15px;
     --button-border: 3px;
@@ -52,13 +50,14 @@ body {
     display: none;
 }
 
-/* Green Elements Class */
+/* Green Elements Class - No hover effect for text */
 .green-element {
     color: var(--green-color) !important;
     border-color: var(--green-color) !important;
 }
 
-.green-element:hover {
+/* Green hover only for buttons */
+button.green-element:hover:not(:disabled) {
     background: rgba(0, 255, 65, 0.1) !important;
 }
 
@@ -445,15 +444,8 @@ body.in-game.flash-success {
     justify-content: center;
 }
 
-.placement-grid-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Larger grid for placement */
-.placement-grid {
-    --cell-size: var(--cell-size-large) !important;
+.placement-grid-container {
+    text-align: center;
 }
 
 .available-ships {
@@ -512,6 +504,10 @@ body.in-game.flash-success {
     border-radius: 8px;
 }
 
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .placement-actions {
     display: grid;
     grid-template-columns: 1fr 1fr 2fr;
@@ -530,6 +526,10 @@ body.in-game.flash-success {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.icon-only-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .ready-btn {
@@ -724,7 +724,33 @@ body.in-game.flash-success {
     border-color: #444;
 }
 
-/* End Turn Button in right sidebar */
+/* Toggle Board Button */
+.toggle-board-btn {
+    margin: 15px 0;
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--border-color);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.toggle-board-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.toggle-icon {
+    font-size: 18px;
+}
+
+/* End Turn Button */
 .end-turn-btn {
     margin-top: auto;
     padding: 12px;
@@ -748,7 +774,7 @@ body.in-game.flash-success {
 }
 
 .surrender-btn {
-    margin-top: auto;
+    margin-top: 15px;
     padding: 12px;
     border: 2px solid var(--danger-color);
     background: rgba(255, 68, 68, 0.1);
@@ -765,7 +791,7 @@ body.in-game.flash-success {
     transform: translateY(-2px);
 }
 
-/* Game Center - Split View */
+/* Game Center - Single Board View */
 .game-center {
     flex: 1;
     margin: 0 280px;
@@ -775,35 +801,32 @@ body.in-game.flash-success {
     padding: 20px;
 }
 
-.boards-split-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+.board-container {
     width: 100%;
-    max-width: 600px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .board-section {
     width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .board-title {
-    margin-bottom: 10px;
+    margin-bottom: 20px;
     text-align: center;
-    font-size: 18px;
+    font-size: 24px;
+    font-weight: bold;
 }
 
 .enemy-title {
     color: var(--danger-color);
-}
-
-/* Enemy board active state */
-.enemy-board.active {
-    box-shadow: 0 0 0 3px var(--danger-color);
-}
-
-.enemy-board.disabled {
-    opacity: 0.7;
 }
 
 /* Stats */
@@ -821,19 +844,21 @@ body.in-game.flash-success {
     font-size: 14px;
 }
 
-/* Game Grid */
+/* Responsive Game Grid */
 .game-grid {
     display: grid;
-    grid-template-columns: repeat(11, var(--cell-size));
-    grid-template-rows: repeat(11, var(--cell-size));
     gap: 2px;
     background: var(--grid-bg);
     padding: 10px;
     border: 2px solid var(--green-color);
     border-radius: 10px;
-    width: auto;
-    margin: 0 auto;
     position: relative;
+}
+
+.responsive-grid {
+    --dynamic-cell-size: min(calc((100vh - 250px) / 11), calc((100vw - 650px) / 11), 50px);
+    grid-template-columns: repeat(11, var(--dynamic-cell-size));
+    grid-template-rows: repeat(11, var(--dynamic-cell-size));
 }
 
 #enemyGrid {
@@ -841,8 +866,6 @@ body.in-game.flash-success {
 }
 
 .grid-cell {
-    width: var(--cell-size);
-    height: var(--cell-size);
     background: rgba(0, 50, 100, 0.3);
     border: 1px solid rgba(0, 150, 255, 0.3);
     display: flex;
@@ -853,6 +876,7 @@ body.in-game.flash-success {
     position: relative;
     font-size: 12px;
     overflow: hidden;
+    aspect-ratio: 1;
 }
 
 .grid-header {
@@ -880,7 +904,7 @@ body.in-game.flash-success {
 .grid-cell.hit::after {
     content: '💥';
     position: absolute;
-    font-size: 20px;
+    font-size: calc(var(--dynamic-cell-size) * 0.6);
 }
 
 .grid-cell.miss {
@@ -890,7 +914,7 @@ body.in-game.flash-success {
 .grid-cell.miss::after {
     content: '•';
     color: white;
-    font-size: 20px;
+    font-size: calc(var(--dynamic-cell-size) * 0.6);
 }
 
 /* Mine Cells */
@@ -902,7 +926,7 @@ body.in-game.flash-success {
 .grid-cell.mine::after {
     content: '💣';
     position: absolute;
-    font-size: 18px;
+    font-size: calc(var(--dynamic-cell-size) * 0.5);
 }
 
 /* Mine stays purple after trigger */
@@ -914,7 +938,7 @@ body.in-game.flash-success {
 .grid-cell.mine-triggered::after {
     content: '💣' !important;
     position: absolute;
-    font-size: 18px;
+    font-size: calc(var(--dynamic-cell-size) * 0.5);
     z-index: 10;
 }
 
@@ -923,7 +947,7 @@ body.in-game.flash-success {
     content: '💣' !important;
 }
 
-/* Radar Cells - Always visible with proper layering */
+/* Radar Cells */
 .grid-cell.radar-area {
     background: rgba(155, 89, 182, 0.3) !important;
     border-color: var(--purple-color) !important;
@@ -933,7 +957,7 @@ body.in-game.flash-success {
     background: var(--purple-color) !important;
     color: white !important;
     font-weight: bold;
-    font-size: 16px;
+    font-size: calc(var(--dynamic-cell-size) * 0.4);
 }
 
 /* Hide miss symbol for radar center */
@@ -946,7 +970,7 @@ body.in-game.flash-success {
     content: attr(data-radar-count);
     position: absolute;
     z-index: 20;
-    font-size: 16px;
+    font-size: calc(var(--dynamic-cell-size) * 0.4);
     font-weight: bold;
     color: white;
 }
@@ -990,7 +1014,7 @@ body.in-game.flash-success {
     border-color: var(--warning-color);
 }
 
-/* Shot Animations - Visible on all grids */
+/* Shot Animations */
 @keyframes waveAnimation {
     0% {
         box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.8);
@@ -1143,10 +1167,9 @@ button:hover {
 }
 
 /* Media Queries for smaller screens */
-@media (max-height: 800px) {
-    :root {
-        --cell-size: 28px;
-        --cell-size-large: 36px;
+@media (max-height: 900px) {
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 220px) / 11), calc((100vw - 600px) / 11), 40px);
     }
     
     .game-sidebar {
@@ -1159,9 +1182,8 @@ button:hover {
 }
 
 @media (max-width: 1400px) {
-    :root {
-        --cell-size: 26px;
-        --cell-size-large: 32px;
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 200px) / 11), calc((100vw - 550px) / 11), 35px);
     }
     
     .game-sidebar {
@@ -1174,9 +1196,8 @@ button:hover {
 }
 
 @media (max-width: 1200px) {
-    :root {
-        --cell-size: 24px;
-        --cell-size-large: 30px;
+    .responsive-grid {
+        --dynamic-cell-size: min(calc((100vh - 180px) / 11), calc((100vw - 480px) / 11), 30px);
     }
     
     .powerup-btn span:not(.powerup-icon) {
@@ -1193,5 +1214,9 @@ button:hover {
     
     .game-center {
         margin: 0 200px;
+    }
+    
+    .board-title {
+        font-size: 20px;
     }
 }
